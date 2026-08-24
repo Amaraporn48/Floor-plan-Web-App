@@ -1,0 +1,228 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+<a href="/locations" class="hover:text-brand-500">สถานที่</a>
+<span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+<span class="font-semibold text-slate-700">{{ location.name }} / {{ building.name }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-3xl mx-auto px-4 py-8">
+  <div class="mb-6">
+    <a href="/locations" class="text-brand-500 hover:underline text-sm font-medium flex items-center gap-1">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> ย้อนกลับไปเลือกสถานที่
+    </a>
+    <div class="flex items-center justify-between mt-2 flex-wrap gap-2">
+      <div>
+        <h2 class="text-2xl font-bold text-slate-800">เลือกชั้นอาคาร ({{ building.name }})</h2>
+        <p class="text-slate-500 text-sm mt-0.5">กรุณาคลิกเลือกชั้นเพื่อเปิดหน้าจอแผนภาพ Floor Plan</p>
+      </div>
+      <button onclick="promptAddNewFloor()" class="px-3.5 py-2 bg-brand-800 hover:bg-slate-700 text-white rounded text-xs font-bold transition flex items-center gap-1 shadow-sm">
+        <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มชั้น / แปลนอาคาร
+      </button>
+    </div>
+  </div>
+
+  <!-- Buildings Tab bar -->
+  <div class="flex items-center justify-between border-b border-slate-200 mb-6 flex-wrap gap-2">
+    <div class="flex gap-2 overflow-x-auto whitespace-nowrap">
+      {% for b in location.buildings %}
+        <a href="/locations/{{ location.id }}/buildings/{{ b.id }}" 
+           class="px-3 py-2 border-b-2 font-bold text-xs transition flex-none {% if b.id == building.id %}border-brand-500 text-brand-600{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %}">
+          {{ b.name }}
+        </a>
+      {% endfor %}
+    </div>
+    <div class="hidden md:flex items-center gap-2 pb-1 text-xs">
+      <button onclick="promptRenameBuilding()" class="text-slate-500 hover:text-brand-600 font-semibold flex items-center gap-0.5">
+        <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> แก้ไขชื่อตึก
+      </button>
+      <span class="text-slate-300">|</span>
+      <button onclick="confirmDeleteBuilding()" class="text-slate-500 hover:text-rose-600 font-semibold flex items-center gap-0.5">
+        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> ลบตึกนี้
+      </button>
+      <span class="text-slate-300">|</span>
+      <button onclick="promptAddNewBuilding()" class="text-brand-600 hover:text-brand-800 font-bold flex items-center gap-0.5">
+        <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มอาคารใหม่
+      </button>
+    </div>
+  </div>
+
+  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+    <div id="floors-list-container" class="divide-y divide-slate-100">
+      {% for fl in floors %}
+        <div class="group flex items-center justify-between p-4 hover:bg-slate-50 transition">
+          <div onclick="navigateToWorkspace('{{ fl.id }}')" class="flex-1 flex items-center gap-3 cursor-pointer">
+            <!-- Icon indicator -->
+            <div class="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-brand-800 font-bold text-sm flex-none">
+              {{ fl.name | floor_abbrev }}
+            </div>
+            <div>
+              <span class="font-bold text-slate-800 block">{{ fl.name }}</span>
+              <div class="flex items-center gap-1.5 mt-0.5 text-xs">
+                <span class="text-slate-400">แอร์ในชั้น:</span>
+                <strong class="text-slate-600">{{ fl.ac_count }} เครื่อง</strong>
+
+              </div>
+            </div>
+          </div>
+          
+          <!-- Actions on hover -->
+          <div class="flex items-center gap-1.5">
+            <button onclick="promptRenameFloor('{{ fl.id }}', '{{ fl.name }}')" class="sm:opacity-0 sm:group-hover:opacity-100 text-slate-400 hover:text-brand-600 transition p-1 bg-slate-100 hover:bg-slate-200 rounded" title="แก้ไขชื่อชั้น">
+              <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="confirmDeleteFloor('{{ fl.id }}', '{{ fl.name }}')" class="sm:opacity-0 sm:group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition p-1 bg-slate-100 hover:bg-slate-200 rounded" title="ลบชั้น">
+              <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="navigateToWorkspace('{{ fl.id }}')" class="p-1 bg-slate-100 hover:bg-brand-500 hover:text-white text-slate-500 rounded transition">
+              <i data-lucide="chevron-right" class="w-5 h-5"></i>
+            </button>
+          </div>
+        </div>
+      {% else %}
+        <div class="text-center py-12 text-slate-400">
+          <i data-lucide="map" class="w-12 h-12 mx-auto mb-3 text-slate-300"></i>
+          <h4 class="font-bold text-slate-600 mb-1">ยังไม่มีชั้นในอาคารนี้</h4>
+          <p class="text-xs">กรุณากดปุ่มเพิ่มชั้นที่มุมขวาบนเพื่อเริ่มต้น</p>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function navigateToWorkspace(flrId) {
+    window.location.href = `/workspace/{{ location.id }}/{{ building.id }}/${flrId}`;
+  }
+
+  // Add new floor level via API
+  async function promptAddNewFloor() {
+    const name = prompt("กรุณาระบุชื่อชั้นใหม่ (เช่น ชั้น 1, ชั้น 2, ชั้นดาดฟ้า):");
+    if (!name || !name.trim()) return;
+    
+    const id = 'flr-' + Date.now();
+    try {
+      const res = await fetch(`/api/v1/locations/{{ location.id }}/buildings/{{ building.id }}/floors`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name: name.trim() })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert("เพิ่มชั้นผิดพลาด");
+      }
+    } catch (e) {
+      alert("ล้มเหลว");
+    }
+  }
+
+  // Rename floor via API
+  async function promptRenameFloor(flrId, oldName) {
+    const name = prompt(`กรุณาระบุชื่อชั้นใหม่สำหรับ "${oldName}":`, oldName);
+    if (!name || !name.trim() || name.trim() === oldName) return;
+    
+    try {
+      const res = await fetch(`/api/v1/locations/{{ location.id }}/buildings/{{ building.id }}/floors/${flrId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert("เปลี่ยนชื่อชั้นผิดพลาด");
+      }
+    } catch (e) {
+      alert("ล้มเหลว");
+    }
+  }
+
+  // Delete floor via API
+  async function confirmDeleteFloor(flrId, name) {
+    const conf = confirm(`⚠️ คุณต้องการลบ "${name}" ใช่หรือไม่?\n\nการลบนี้จะลบไฟล์แผนผังและจุดมาร์คแอร์ทั้งหมดในชั้นนี้อย่างถาวร!`);
+    if (!conf) return;
+    
+    try {
+      const res = await fetch(`/api/v1/locations/{{ location.id }}/buildings/{{ building.id }}/floors/${flrId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert("ลบชั้นผิดพลาด");
+      }
+    } catch (e) {
+      alert("ล้มเหลว");
+    }
+  }
+
+  // Add new building
+  async function promptAddNewBuilding() {
+    const name = prompt("กรุณาระบุชื่ออาคาร / ตึกย่อย ใหม่:");
+    if (!name || !name.trim()) return;
+    
+    const id = 'bld-' + Date.now();
+    try {
+      const res = await fetch(`/api/v1/locations/{{ location.id }}/buildings`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, name: name.trim() })
+      });
+      if (res.ok) {
+        window.location.href = `/locations/{{ location.id }}/buildings/${id}`;
+      } else {
+        alert("เพิ่มตึกผิดพลาด");
+      }
+    } catch (e) {
+      alert("ล้มเหลว");
+    }
+  }
+
+  // Rename active building
+  async function promptRenameBuilding() {
+    const oldName = '{{ building.name }}';
+    const name = prompt(`กรุณาระบุชื่ออาคารใหม่สำหรับ "${oldName}":`, oldName);
+    if (!name || !name.trim() || name.trim() === oldName) return;
+    
+    try {
+      const res = await fetch(`/api/v1/locations/{{ location.id }}/buildings/{{ building.id }}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        alert("เปลี่ยนชื่ออาคารผิดพลาด");
+      }
+    } catch (e) {
+      alert("ล้มเหลว");
+    }
+  }
+
+  // Delete active building
+  async function confirmDeleteBuilding() {
+    const name = '{{ building.name }}';
+    const conf = confirm(`⚠️ คุณต้องการลบตึก "${name}" หรือไม่?\n\nการลบนี้จะลบแผ่นชั้นแผนผังและแอร์ทั้งหมดในตึกนี้ถาวร!`);
+    if (!conf) return;
+    
+    try {
+      const res = await fetch(`/api/v1/locations/{{ location.id }}/buildings/{{ building.id }}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        window.location.href = '/locations';
+      } else {
+        alert("ลบไม่สำเร็จ");
+      }
+    } catch (e) {
+      alert("ล้มเหลว");
+    }
+  }
+</script>
+{% endblock %}

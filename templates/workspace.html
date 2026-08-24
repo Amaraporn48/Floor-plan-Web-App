@@ -1,0 +1,506 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+<a href="/locations" class="hover:text-brand-500">สถานที่</a>
+<span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+<a href="/locations/{{ location.id }}/buildings/{{ building.id }}" class="hover:text-brand-500">{{ location.name }} / {{ building.name }}</a>
+<span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+<span class="font-semibold text-slate-700">{{ floor.name }}</span>
+{% endblock %}
+
+{% block content %}
+<div class="h-[calc(100vh-11rem)] md:h-[calc(100vh-7rem)] flex flex-col overflow-hidden relative">
+  <!-- Top Bar Toolbar (Workspace Meta) -->
+  <div class="bg-white border-b border-slate-200 py-3 px-4 sm:px-6 lg:px-8 flex-none z-15 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+    <div>
+      <div class="text-[10px] text-slate-400 uppercase tracking-widest font-black">พื้นที่ปฏิบัติการงานช่าง</div>
+      <h3 class="text-md font-bold text-slate-800 flex items-center gap-2 mt-0.5 flex-wrap">
+        <i data-lucide="map-pin" class="w-4.5 h-4.5 text-brand-500 flex-none"></i>
+        <span class="truncate max-w-[120px] sm:max-w-none">{{ location.name }}</span>
+        <span class="text-slate-300 hidden sm:inline">/</span>
+        <span class="truncate max-w-[80px] sm:max-w-none">{{ building.name }}</span>
+        <span class="text-slate-300 hidden sm:inline">/</span>
+        <span class="text-brand-600 bg-brand-50 border border-brand-200 px-2.5 py-0.5 rounded-full text-xs font-black">{{ floor.name }}</span>
+      </h3>
+    </div>
+
+    <div class="flex items-center gap-2">
+      <!-- Edit Mode Indicators -->
+      <div id="add-marker-tip" class="hidden text-xs text-brand-600 font-bold bg-brand-50 border border-brand-200 px-3 py-1.5 rounded-lg animate-pulse flex items-center gap-1">
+        <i data-lucide="info" class="w-3.5 h-3.5"></i> คลิกจุดบนภาพแปลนเพื่อปักหมุดแอร์...
+      </div>
+
+      <button id="btn-toggle-add-mode" onclick="toggleAddMarkerMode()" class="px-3 py-2 bg-brand-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow transition">
+        <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มแอร์ลงแปลน
+      </button>
+    </div>
+  </div>
+
+  <!-- Workspace Shell -->
+  <div class="flex-1 flex relative overflow-hidden">
+    
+    <!-- Drag/Place Instruction Banner -->
+    <div id="drag-instruction" class="drag-instruction-overlay hidden">
+      <i data-lucide="info" class="w-4 h-4 text-brand-500"></i>
+      <span>คลิกตรงจุดตำแหน่งบนรูปแปลนที่ต้องการวางมาร์คแอร์</span>
+      <button onclick="toggleAddMarkerMode(false)" class="ml-2 text-rose-400 hover:text-rose-500 font-bold focus:outline-none">ยกเลิก</button>
+    </div>
+
+    <!-- Left Sidebar: Equipment List & Blueprint Uploader -->
+    <aside id="map-sidebar" class="w-64 bg-white border-r border-slate-200 flex-none hidden lg:flex flex-col z-10">
+      <!-- Header -->
+      <div class="p-4 border-b border-slate-100 bg-slate-50">
+        <div class="flex justify-between items-center text-xs font-bold text-slate-500 uppercase tracking-wider">
+          <span class="flex items-center gap-1.5">
+            <button onclick="toggleMapSidebar()" class="p-1 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded transition flex items-center justify-center" title="ซ่อนรายการอุปกรณ์">
+              <i data-lucide="chevron-left" class="w-4 h-4"></i>
+            </button>
+            รายการแอร์ชั้นนี้
+          </span>
+          <span id="sidebar-ac-count" class="bg-slate-200 text-slate-700 px-1.5 py-0.5 rounded-full text-[10px]">0 เครื่อง</span>
+        </div>
+      </div>
+
+      <!-- Equipment list scroll list -->
+      <div id="sidebar-ac-list" class="flex-1 overflow-y-auto divide-y divide-slate-100">
+        <!-- Rendered dynamically -->
+      </div>
+
+      <!-- Blueprint Uploader -->
+      <div class="p-4 border-t border-slate-200 bg-slate-50">
+        <label class="block text-xs font-bold text-slate-600 mb-2">อัปโหลด/แนบไฟล์แปลนพื้น (Floor Plan)</label>
+        <div class="relative border-2 border-dashed border-slate-300 rounded-lg p-3.5 hover:border-brand-500 transition text-center cursor-pointer bg-white">
+          <input type="file" id="floorplan-file-input" accept="image/*,.pdf" onchange="handleFloorPlanUpload(event)" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer">
+          <div class="text-center text-slate-500">
+            <i data-lucide="upload-cloud" class="w-6 h-6 mx-auto text-slate-400 mb-1"></i>
+            <span class="text-[11px] font-bold block">อัปโหลดไฟล์แปลน PDF / รูป</span>
+            <span class="text-[9px] text-slate-400 block">คมชัดระดับ 4K (รองรับ iPad)</span>
+          </div>
+        </div>
+        <!-- Loader pulsing -->
+        <div id="uploader-loader" class="hidden mt-2 text-center text-[10px] text-brand-600 font-bold bg-brand-50 p-2 rounded animate-pulse border border-brand-200 flex items-center justify-center gap-1">
+          <i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> กำลังแปลงไฟล์เป็นความละเอียดสูง 4K...
+        </div>
+      </div>
+    </aside>
+
+    <!-- Viewport Workspace Canvas Area -->
+    <div class="flex-1 relative flex flex-col justify-between overflow-hidden bg-slate-100">
+      
+      <!-- Floating Sidebar Restore Button (visible by default on mobile, hidden on lg+) -->
+      <button id="btn-open-sidebar" onclick="toggleMapSidebar()" class="absolute left-4 top-4 z-20 p-2.5 bg-white hover:bg-slate-50 text-slate-700 rounded-lg shadow-md border border-slate-200 transition lg:hidden flex items-center justify-center gap-1.5" title="แสดงรายการอุปกรณ์">
+        <i data-lucide="chevron-right" class="w-5 h-5 text-slate-600"></i>
+        <span class="text-xs font-bold text-slate-600 sm:hidden">รายการแอร์</span>
+      </button>
+
+      <!-- Zoom Controls Float -->
+      <div class="absolute bottom-4 right-4 z-20 flex flex-col gap-1.5 shadow-md">
+        <button onclick="panZoomInstance.zoomIn()" title="ขยาย" class="w-10 h-10 bg-white hover:bg-slate-50 text-slate-700 rounded-t-lg border-b border-slate-200 flex items-center justify-center transition">
+          <i data-lucide="zoom-in" class="w-5 h-5"></i>
+        </button>
+        <button onclick="panZoomInstance.zoomOut()" title="ย่อ" class="w-10 h-10 bg-white hover:bg-slate-50 text-slate-700 flex items-center justify-center transition">
+          <i data-lucide="zoom-out" class="w-5 h-5"></i>
+        </button>
+        <button onclick="panZoomInstance.zoomToFit()" title="พอดีหน้าจอ" class="w-10 h-10 bg-white hover:bg-slate-50 text-slate-700 flex items-center justify-center transition">
+          <i data-lucide="maximize-2" class="w-4 h-4"></i>
+        </button>
+        <button onclick="panZoomInstance.reset()" title="คืนค่าเริ่มต้น" class="w-10 h-10 bg-white hover:bg-slate-50 text-slate-700 rounded-b-lg flex items-center justify-center transition">
+          <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <!-- Instruction Footer (Desktop) -->
+      <div class="absolute bottom-4 left-4 z-20 pointer-events-none hidden sm:block">
+        <div class="bg-brand-900/90 backdrop-blur-sm text-white px-3 py-1.5 rounded-lg text-xs flex items-center gap-2 shadow">
+          <i data-lucide="mouse-pointer" class="w-3.5 h-3.5 text-brand-500"></i>
+          <span>คลิกซ้ายลากเลื่อนแผนที่ | เลื่อนลูกกลิ้งเมาส์เพื่อ Zoom | ลากวางหมุดแอร์เพื่ออัปเดตแกนพิกัดได้ทันที</span>
+        </div>
+      </div>
+
+      <!-- PanZoom Viewport Window -->
+      <div id="panzoom-viewport" class="panzoom-container flex-1">
+        <div id="panzoom-content" class="panzoom-content" style="transform: translate(0px, 0px) scale(1);">
+          <!-- Floor plan background image -->
+          <img id="floorplan-image" src="{% if floor.image_data %}{{ floor.image_data }}{% else %}/static/assets/floor_plan_a1.png{% endif %}" alt="Floor Plan Blueprint" class="shadow-sm" style="max-width: none !important; width: auto !important; height: auto !important;" onload="onFloorPlanImageLoaded()">
+          <!-- Markers Container Overlay -->
+          <div id="markers-overlay" class="absolute inset-0 pointer-events-none z-10">
+            <!-- Markers render here dynamically as absolute elements -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Detail Drawer slide-over -->
+  <div id="side-drawer" class="fixed inset-0 overflow-hidden z-50 hidden" role="dialog" aria-modal="true">
+    <div class="absolute inset-0 overflow-hidden">
+      <div id="drawer-backdrop" onclick="closeSideDrawer()" class="absolute inset-0 slide-over-backdrop opacity-0 transition-opacity"></div>
+      
+      <div class="absolute inset-y-0 right-0 pl-10 max-w-full flex sm:pl-16">
+        <div id="drawer-panel" class="w-screen sm:max-w-lg bg-white shadow-2xl flex flex-col slide-over-panel translate-x-full">
+          
+          <!-- Header -->
+          <div class="p-6 bg-brand-900 text-white flex-none flex justify-between items-center shadow">
+            <div class="flex items-center gap-2">
+              <span id="detail-status-pill" class="w-3.5 h-3.5 rounded-full bg-emerald-500"></span>
+              <h2 id="detail-ac-name" class="text-xl font-bold tracking-tight">AC-000</h2>
+            </div>
+            <button onclick="closeSideDrawer()" class="rounded-md text-slate-400 hover:text-white focus:outline-none">
+              <i data-lucide="x" class="w-6 h-6"></i>
+            </button>
+          </div>
+
+          <!-- Drawer Body -->
+          <div class="flex-1 overflow-y-auto p-6 space-y-6">
+            <!-- Quick info status -->
+            <div class="bg-slate-50 p-4 rounded-xl border border-slate-200 flex justify-between items-center text-xs">
+              <div>
+                <span class="text-slate-500 block">สถานะปัจจุบัน</span>
+                <span id="detail-status-text" class="text-sm font-bold text-emerald-600">ใช้งานปกติ</span>
+              </div>
+              <div class="text-right">
+                <span class="text-slate-500 block">อัปเดตล่าสุด</span>
+                <span id="detail-updated-at" class="text-sm font-semibold text-slate-700">-</span>
+              </div>
+            </div>
+
+            <!-- Photos Gallery -->
+            <div>
+              <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <i data-lucide="camera" class="w-4 h-4 text-slate-500"></i> รูปถ่ายเครื่องปรับอากาศของจริง
+              </h3>
+              <div id="detail-images-container" class="grid grid-cols-2 gap-2">
+                <!-- Populated dynamically -->
+              </div>
+            </div>
+
+            <!-- Specs details -->
+            <div>
+              <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <i data-lucide="info" class="w-4 h-4 text-slate-500"></i> รายละเอียดทางเทคนิค
+              </h3>
+              <div class="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100 text-xs">
+                <div class="grid grid-cols-3 p-3 bg-slate-50">
+                  <span class="text-slate-500 font-medium">สถานที่ติดตั้ง</span>
+                  <span id="detail-location" class="col-span-2 text-slate-800 font-semibold">-</span>
+                </div>
+                <div class="grid grid-cols-3 p-3">
+                  <span class="text-slate-500 font-medium">อาคาร / ชั้น</span>
+                  <span id="detail-building-floor" class="col-span-2 text-slate-800">-</span>
+                </div>
+                <div class="grid grid-cols-3 p-3 bg-slate-50">
+                  <span class="text-slate-500 font-medium">ห้อง / ตำแหน่ง</span>
+                  <span id="detail-room" class="col-span-2 text-slate-800">-</span>
+                </div>
+                <div class="grid grid-cols-3 p-3">
+                  <span class="text-slate-500 font-medium">ประเภท / ชนิด</span>
+                  <span id="detail-type" class="col-span-2 text-slate-800">-</span>
+                </div>
+                <div class="grid grid-cols-3 p-3 bg-slate-50">
+                  <span class="text-slate-500 font-medium">ประเภทระบบ</span>
+                  <span id="detail-system-type" class="col-span-2 text-slate-800">-</span>
+                </div>
+                <div class="grid grid-cols-3 p-3">
+                  <span class="text-slate-500 font-medium">ขนาด BTU</span>
+                  <span id="detail-btu" class="col-span-2 text-slate-800">-</span>
+                </div>
+                <div class="grid grid-cols-3 p-3 bg-slate-50">
+                  <span class="text-slate-500 font-medium">ยี่ห้อ / รุ่น</span>
+                  <span id="detail-brand-model" class="col-span-2 text-slate-800">-</span>
+                </div>
+                <div class="grid grid-cols-3 p-3">
+                  <span class="text-slate-500 font-medium">Serial Number</span>
+                  <span id="detail-serial" class="col-span-2 text-slate-800 font-mono">-</span>
+                </div>
+                <div class="grid grid-cols-3 p-3 bg-slate-50">
+                  <span class="text-slate-500 font-medium">วันที่ผลิต/ติดตั้ง</span>
+                  <span id="detail-install-date" class="col-span-2 text-slate-800">-</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Notes -->
+            <div>
+              <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                <i data-lucide="sticky-note" class="w-4 h-4 text-slate-500"></i> หมายเหตุล่าสุด
+              </h3>
+              <div id="detail-note" class="p-4 bg-yellow-50 border border-yellow-200 text-yellow-800 rounded-lg text-xs italic">
+                -
+              </div>
+            </div>
+
+            <!-- Updated By -->
+            <div class="text-xs text-slate-400 flex items-center gap-1">
+              <i data-lucide="user" class="w-3.5 h-3.5"></i>
+              <span>บันทึกโดย: </span>
+              <strong id="detail-updated-by" class="text-slate-500">-</strong>
+            </div>
+
+            <!-- Maintenance History list -->
+            <div class="border-t border-slate-200 pt-6 mt-6">
+              <h3 class="text-sm font-bold text-slate-700 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                <i data-lucide="history" class="w-4 h-4 text-slate-500"></i> ประวัติการซ่อมบำรุงบริการ
+              </h3>
+              <div id="detail-maintenance-list" class="space-y-3 mb-4 max-h-60 overflow-y-auto pr-1">
+                <!-- Dynamically loaded -->
+              </div>
+
+              <!-- Add log form -->
+              <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                <span id="maintenance-form-title" class="text-xs font-bold text-slate-700 block mb-2">บันทึกประวัติการบำรุงรักษาเพิ่ม</span>
+                <div class="space-y-2">
+                  <textarea id="maintenance-new-note" rows="2" placeholder="กรอกรายละเอียดซ่อมบำรุงรักษา..." class="w-full p-2 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500"></textarea>
+                  <div class="grid grid-cols-2 gap-2">
+                    <div>
+                      <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">สถานะล่าสุด</label>
+                      <select id="maintenance-new-status" class="w-full p-1.5 border border-slate-300 rounded text-xs focus:outline-none">
+                        <option value="normal">ใช้งานปกติ</option>
+                        <option value="check">ต้องตรวจสอบ</option>
+                        <option value="repair">ต้องซ่อม</option>
+                        <option value="broken">ชำรุด/เสีย</option>
+                        <option value="inactive">ไม่ใช้งาน</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label class="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">ชื่อช่าง</label>
+                      <input type="text" id="maintenance-new-technician" value="ช่างสมชาย มั่นคง" class="w-full p-1.5 border border-slate-300 rounded text-xs focus:outline-none">
+                    </div>
+                  </div>
+                  <input type="hidden" id="maintenance-editing-log-id" value="">
+                  <div class="flex gap-2">
+                    <button id="btn-submit-maintenance" onclick="saveMaintenanceLog()" class="flex-1 py-2 bg-brand-600 hover:bg-brand-700 text-white rounded text-xs font-bold shadow transition flex items-center justify-center gap-1">
+                      <i id="btn-submit-maintenance-icon" data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+                      <span id="btn-submit-maintenance-text">บันทึกประวัติซ่อมบำรุง</span>
+                    </button>
+                    <button id="btn-cancel-edit-maintenance" onclick="cancelEditMaintenance()" class="hidden px-3 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-xs font-bold transition">
+                      ยกเลิก
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Open QR Code Button -->
+            <div class="pt-4 border-t border-slate-200 mt-6">
+              <button onclick="openACQRSticker()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg border border-slate-300 text-xs font-bold transition flex items-center justify-center gap-1.5 shadow-sm">
+                <i data-lucide="qr-code" class="w-4 h-4 text-brand-600"></i> เปิดสติกเกอร์ QR Code ประจำเครื่อง
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Footer Actions -->
+          <div class="p-6 bg-slate-50 border-t border-slate-200 flex-none grid grid-cols-2 gap-2">
+            <button onclick="editACFromDrawer()" class="px-4 py-2.5 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded text-xs font-bold flex items-center justify-center gap-1 shadow-sm">
+              <i data-lucide="edit-3" class="w-4 h-4"></i> แก้ไขสเปคเครื่อง
+            </button>
+            <button onclick="deleteACFromDrawer()" class="px-4 py-2.5 bg-rose-500 hover:bg-rose-600 text-white rounded text-xs font-bold flex items-center justify-center gap-1 shadow-sm">
+              <i data-lucide="trash-2" class="w-4 h-4"></i> ลบมาร์คเกอร์
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Form Dialog Modal -->
+  <div id="ac-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden" role="dialog" aria-modal="true">
+    <div onclick="closeACModal()" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+    
+    <div class="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden z-10 max-h-[90vh] flex flex-col">
+      <div id="modal-header-container" class="p-5 bg-brand-900 text-white flex-none flex justify-between items-center">
+        <h3 id="modal-title" class="text-lg font-bold">เพิ่มเครื่องปรับอากาศใหม่</h3>
+        <button onclick="closeACModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+      </div>
+
+      <form id="ac-form" onsubmit="handleFormSubmit(event)" class="flex-1 overflow-y-auto p-6 space-y-6">
+        <input type="hidden" id="form-ac-id">
+        <input type="hidden" id="form-ac-x" value="50">
+        <input type="hidden" id="form-ac-y" value="50">
+        
+        <div id="form-coords-indicator" class="hidden text-xs bg-slate-100 text-slate-600 p-2.5 rounded border border-slate-200 flex items-center gap-2">
+          <i data-lucide="map-pin" class="w-4 h-4 text-brand-500"></i>
+          <span>พิกัดการมาร์ค: แกน X: <strong id="form-indicator-x">-</strong>% | แกน Y: <strong id="form-indicator-y">-</strong>%</span>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">1. ข้อมูลเครื่องปรับอากาศ</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="form-name" class="block text-xs font-bold text-slate-700 mb-1">หมายเลขเครื่อง <span class="text-rose-500">*</span></label>
+              <input type="text" id="form-name" required placeholder="เช่น AC-001" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm">
+            </div>
+            <div>
+              <label for="form-serial" class="block text-xs font-bold text-slate-700 mb-1">Serial Number</label>
+              <input type="text" id="form-serial" placeholder="ซีเรียลนัมเบอร์แอร์" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm">
+            </div>
+            <div>
+              <label for="form-type" class="block text-xs font-bold text-slate-700 mb-1">ชนิดเครื่องปรับอากาศ <span class="text-rose-500">*</span></label>
+              <select id="form-type" required onchange="toggleCustomTypeField()" class="w-full px-3 py-2 border border-slate-300 rounded bg-white focus:outline-none focus:border-brand-500 text-sm">
+                <option value="Wall Type">Wall Type (ติดผนัง)</option>
+                <option value="Cassette Type">Cassette Type (ฝังฝ้า 4 ทิศทาง)</option>
+                <option value="Ceiling Type">Ceiling Type (แขวนใต้ฝ้า)</option>
+                <option value="Duct Type">Duct Type (ต่อท่อลม)</option>
+                <option value="Floor Type">Floor Type (ตั้งพื้น)</option>
+                <option value="Package">Package (ตู้ตั้งพื้นใหญ่)</option>
+                <option value="Split Type">Split Type (แยกส่วน)</option>
+                <option value="อื่นๆ">อื่นๆ</option>
+              </select>
+              <div id="form-custom-type-container" class="hidden mt-2">
+                <input type="text" id="form-custom-type" placeholder="ระบุประเภทอื่นๆ..." class="w-full px-3 py-2 border border-brand-500 rounded focus:outline-none text-sm">
+              </div>
+            </div>
+            <div>
+              <label for="form-system-type" class="block text-xs font-bold text-slate-700 mb-1">ประเภทระบบ <span class="text-rose-500">*</span></label>
+              <select id="form-system-type" required onchange="toggleCustomSystemTypeField()" class="w-full px-3 py-2 border border-slate-300 rounded bg-white focus:outline-none focus:border-brand-500 text-sm">
+                <option value="ระบบน้ำยา">ระบบน้ำยา (DX)</option>
+                <option value="ระบบน้ำเย็น">ระบบน้ำเย็น (Chilled Water)</option>
+                <option value="อื่นๆ">อื่นๆ</option>
+              </select>
+              <div id="form-custom-system-type-container" class="hidden mt-2">
+                <input type="text" id="form-custom-system-type" placeholder="ระบุประเภทระบบอื่นๆ..." class="w-full px-3 py-2 border border-brand-500 rounded focus:outline-none text-sm">
+              </div>
+            </div>
+            <div>
+              <label for="form-btu" class="block text-xs font-bold text-slate-700 mb-1">ขนาด BTU</label>
+              <input type="text" id="form-btu" placeholder="เช่น 18,000 หรือ 24,000" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm">
+            </div>
+            <div>
+              <label for="form-brand" class="block text-xs font-bold text-slate-700 mb-1">ยี่ห้อ (Brand)</label>
+              <input type="text" id="form-brand" placeholder="ยี่ห้อแอร์" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm">
+            </div>
+            <div>
+              <label for="form-model" class="block text-xs font-bold text-slate-700 mb-1">รุ่น (Model)</label>
+              <input type="text" id="form-model" placeholder="รุ่นของแอร์" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm">
+            </div>
+            <div>
+              <label for="form-install-date" class="block text-xs font-bold text-slate-700 mb-1">วันที่ผลิต/ติดตั้ง</label>
+              <input type="date" id="form-install-date" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm">
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">2. ตำแหน่งห้องและการบริการ</h4>
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label for="form-room" class="block text-xs font-bold text-slate-700 mb-1">ห้อง / ตำแหน่ง (เช่น ห้องจ่ายยา 102)</label>
+              <input type="text" id="form-room" placeholder="ระบุตำแหน่งห้องติดตั้ง" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm">
+            </div>
+            <div>
+              <label for="form-status" class="block text-xs font-bold text-slate-700 mb-1">สถานะเครื่องปรับอากาศ <span class="text-rose-500">*</span></label>
+              <select id="form-status" required class="w-full px-3 py-2 border border-slate-300 rounded bg-white focus:outline-none focus:border-brand-500 text-sm">
+                <option value="normal">ใช้งานปกติ (สีเขียว)</option>
+                <option value="check">ต้องตรวจสอบ (สีเหลือง)</option>
+                <option value="repair">ต้องซ่อม / รอซ่อม (สีส้ม)</option>
+                <option value="broken">ชำรุด / เสีย (สีแดง)</option>
+                <option value="inactive">ไม่ได้ใช้งาน (สีเทา)</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">3. หมายเหตุและประวัติการซ่อมบำรุงเบื้องต้น</h4>
+          <label for="form-note" class="block text-xs font-bold text-slate-700 mb-1">รายละเอียดหมายเหตุ</label>
+          <textarea id="form-note" rows="2" placeholder="เช่น ล้างทำความสะอาดแอร์ล่าสุดเมื่อสัปดาห์ก่อน..." class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm"></textarea>
+        </div>
+
+        <div>
+          <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">4. แนบรูปถ่ายตัวเครื่องจริง</h4>
+          <div class="flex items-center justify-center w-full">
+            <label class="flex flex-col w-full h-32 border-2 border-dashed border-slate-300 rounded-lg hover:border-brand-500 transition justify-center items-center cursor-pointer bg-slate-50">
+              <div class="flex flex-col items-center justify-center pt-5 pb-6 text-slate-500">
+                <i data-lucide="camera" class="w-8 h-8 mb-2 text-slate-400"></i>
+                <span class="text-xs font-bold block">แนบภาพถ่ายเครื่องจริง</span>
+                <span class="text-[10px] text-slate-400">อัปโหลดภาพถ่ายขยายขีดจำกัด (รองรับหลายไฟล์)</span>
+              </div>
+              <input type="file" id="form-image-input" accept="image/*" multiple onchange="handleACImagesSelect(event)" class="hidden">
+            </label>
+          </div>
+          <div id="form-images-preview" class="grid grid-cols-4 gap-2 mt-3">
+            <!-- Images thumbnail previews -->
+          </div>
+        </div>
+      </form>
+
+      <div class="p-5 bg-slate-100 border-t border-slate-200 flex-none flex justify-end gap-2">
+        <button type="button" onclick="closeACModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded hover:bg-slate-200 text-sm font-medium transition">
+          ยกเลิก
+        </button>
+        <button type="button" onclick="document.getElementById('ac-form').requestSubmit()" class="px-5 py-2 bg-brand-800 hover:bg-slate-800 text-white rounded text-sm font-bold shadow transition">
+          บันทึกข้อมูล
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- QR modal -->
+  <div id="qr-modal" class="fixed inset-0 z-50 flex items-center justify-center hidden" role="dialog" aria-modal="true">
+    <div onclick="closeQRModal()" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+    <div class="bg-white rounded-xl shadow-xl w-80 max-w-sm overflow-hidden z-10 border border-slate-100 flex flex-col p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="font-bold text-slate-800 text-sm flex items-center gap-1">
+          <i data-lucide="qr-code" class="w-4 h-4 text-brand-600"></i> สติกเกอร์ QR Code ประจำเครื่อง
+        </h3>
+        <button onclick="closeQRModal()" class="text-slate-400 hover:text-slate-600 focus:outline-none">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div id="qr-sticker-card" class="border-2 border-slate-800 rounded-xl p-5 bg-white flex flex-col items-center text-center shadow-inner">
+        <div class="flex items-center gap-1.5 mb-3">
+          <span class="text-xs font-black tracking-wider text-brand-800 uppercase flex items-center gap-1">
+            <i data-lucide="snowflake" class="w-4 h-4 text-brand-500 fill-brand-500"></i>
+            TECHNICAL WATER
+          </span>
+        </div>
+        <div class="text-[9px] text-slate-400 uppercase tracking-widest font-bold">ข้อมูลตัวเครื่องและประวัติบริการ</div>
+        <div id="qr-sticker-ac-name" class="text-2xl font-black text-slate-800 mt-0.5 tracking-wide">-</div>
+        <div class="my-4 bg-slate-50 p-2 rounded-lg border border-slate-200">
+          <img id="qr-sticker-image" src="" alt="AC QR Code" class="w-36 h-36 object-contain">
+        </div>
+        <div class="text-[9px] text-slate-500 leading-tight">
+          สแกนเพื่อตรวจสอบรายละเอียดทางเทคนิค สถิติ และประวัติการซ่อมบำรุง
+        </div>
+        <div id="qr-sticker-url" class="text-[8px] text-slate-400 mt-1.5 font-mono truncate max-w-full">
+          -
+        </div>
+      </div>
+
+      <button onclick="printSticker()" class="mt-5 w-full py-2.5 bg-slate-900 hover:bg-slate-800 text-white rounded-lg text-xs font-bold transition flex items-center justify-center gap-1.5 shadow">
+        <i data-lucide="printer" class="w-4 h-4"></i> พิมพ์รหัส QR Code (Print)
+      </button>
+    </div>
+  </div>
+
+  <!-- Image Preview Modal -->
+  <div id="image-preview-modal" class="fixed inset-0 z-[60] flex items-center justify-center hidden" role="dialog" aria-modal="true">
+    <div onclick="closeImagePreviewModal()" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
+    <div class="relative max-w-4xl max-h-[90vh] overflow-hidden z-10 flex flex-col items-center justify-center p-4">
+      <button onclick="closeImagePreviewModal()" class="absolute top-4 right-4 text-white hover:text-slate-300 focus:outline-none p-2 bg-slate-800/60 hover:bg-slate-800/80 rounded-full transition shadow">
+        <i data-lucide="x" class="w-6 h-6"></i>
+      </button>
+      <img id="image-preview-content" src="" alt="High Resolution Preview" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border border-white/10">
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<!-- Workspace interactive handlers configuration -->
+<script>
+  const WORKSPACE_META = {
+    locationId: '{{ location.id }}',
+    locationName: '{{ location.name }}',
+    buildingId: '{{ building.id }}',
+    buildingName: '{{ building.name }}',
+    floorId: '{{ floor.id }}',
+    floorName: '{{ floor.name }}',
+    highlightAcId: '{{ highlight_ac_id }}'
+  };
+</script>
+<script src="/static/js/panzoom.js"></script>
+<script src="/static/js/workspace.js"></script>
+{% endblock %}

@@ -1,0 +1,270 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+<span class="font-medium text-slate-700">รายการเครื่องปรับอากาศทั้งหมด</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-800">ตารางรายการเครื่องปรับอากาศ</h2>
+      <p class="text-slate-500">ตารางตรวจสอบเครื่องปรับอากาศ ค้นหา เรียงข้อมูล และเข้าจัดการ</p>
+    </div>
+  </div>
+
+  <!-- Filters & Search Toolbar -->
+  <div class="bg-white p-4 rounded-t-xl border-t border-x border-slate-200 flex flex-col md:flex-row gap-4 items-center justify-between">
+    <!-- Search -->
+    <div class="relative w-full md:w-80">
+      <input type="text" id="table-search-input" onkeyup="renderACTable()" placeholder="ค้นหาด้วย เลขเครื่อง, ซีเรียล, ห้อง..." class="w-full pl-9 pr-3 py-1.5 rounded-lg border border-slate-300 text-sm focus:outline-none focus:border-brand-500">
+      <i data-lucide="search" class="absolute left-3 top-2.5 w-4 h-4 text-slate-400"></i>
+    </div>
+
+    <!-- Filter Dropdowns -->
+    <div class="w-full md:w-auto flex flex-col sm:flex-row gap-2 text-xs">
+      <!-- Location Filter -->
+      <select id="table-filter-location" onchange="onTableFilterLocationChange()" class="border border-slate-300 rounded p-1.5 bg-white text-slate-600 focus:outline-none focus:border-brand-500">
+        <option value="">ทุกสถานที่</option>
+      </select>
+      
+      <!-- Building Filter -->
+      <select id="table-filter-building" onchange="onTableFilterBuildingChange()" class="border border-slate-300 rounded p-1.5 bg-white text-slate-600 focus:outline-none focus:border-brand-500" disabled>
+        <option value="">ทุกอาคาร</option>
+      </select>
+
+      <!-- Status Filter -->
+      <select id="table-filter-status" onchange="renderACTable()" class="border border-slate-300 rounded p-1.5 bg-white text-slate-600 focus:outline-none focus:border-brand-500">
+        <option value="">ทุกสถานะ</option>
+        <option value="normal">ใช้งานปกติ</option>
+        <option value="check">ต้องตรวจสอบ</option>
+        <option value="repair">ต้องซ่อม</option>
+        <option value="broken">ชำรุด</option>
+        <option value="inactive">ไม่ได้ใช้งาน</option>
+      </select>
+
+      <!-- Clear Filters -->
+      <button onclick="clearTableFilters()" class="text-brand-500 hover:text-slate-900 font-bold px-2 py-1">
+        ล้างตัวกรอง
+      </button>
+    </div>
+  </div>
+
+  <!-- Table responsive wrapper -->
+  <div class="bg-white border border-slate-200 rounded-b-xl overflow-x-auto shadow-sm">
+    <table class="min-w-full divide-y divide-slate-200 text-left text-sm">
+      <thead class="bg-slate-50 text-xs font-bold text-slate-500 uppercase tracking-wider">
+        <tr>
+          <th scope="col" class="px-6 py-3.5 cursor-pointer hover:bg-slate-100" onclick="sortTable('name')">หมายเลขแอร์ <span id="sort-icon-name"></span></th>
+          <th scope="col" class="px-6 py-3.5">ตำแหน่ง / ห้อง</th>
+          <th scope="col" class="px-6 py-3.5 cursor-pointer hover:bg-slate-100" onclick="sortTable('type')">ประเภท <span id="sort-icon-type"></span></th>
+          <th scope="col" class="px-6 py-3.5">ขนาด BTU</th>
+          <th scope="col" class="px-6 py-3.5">ยี่ห้อ / รุ่น</th>
+          <th scope="col" class="px-6 py-3.5">Serial Number</th>
+          <th scope="col" class="px-6 py-3.5 cursor-pointer hover:bg-slate-100" onclick="sortTable('status')">สถานะ <span id="sort-icon-status"></span></th>
+          <th scope="col" class="px-6 py-3.5 text-center">รูป</th>
+          <th scope="col" class="px-6 py-3.5 text-right">การจัดการ</th>
+        </tr>
+      </thead>
+      <tbody id="table-body" class="bg-white divide-y divide-slate-100">
+        <!-- Table content loaded dynamically -->
+      </tbody>
+    </table>
+    
+    <!-- Empty State in Table -->
+    <div id="table-empty-state" class="hidden text-center py-12">
+      <i data-lucide="package-open" class="w-12 h-12 mx-auto text-slate-300 mb-3"></i>
+      <p class="text-slate-500 font-medium">ไม่พบข้อมูลเครื่องปรับอากาศที่ตรงกับเงื่อนไข</p>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let allACs = [];
+  let allLocations = [];
+  let sortField = 'name';
+  let sortAscending = true;
+
+  // Fetch initial data
+  window.addEventListener('DOMContentLoaded', async () => {
+    try {
+      const [acsRes, locsRes] = await Promise.all([
+        fetch('/api/v1/acs'),
+        fetch('/api/v1/locations')
+      ]);
+      allACs = await acsRes.json();
+      allLocations = await locsRes.json();
+      
+      populateLocationFilter();
+      renderACTable();
+    } catch (e) {
+      console.error(e);
+      alert("ไม่สามารถดึงข้อมูลแอร์ได้");
+    }
+  });
+
+  // Populate Location dropdown filter
+  function populateLocationFilter() {
+    const select = document.getElementById('table-filter-location');
+    allLocations.forEach(loc => {
+      const opt = document.createElement('option');
+      opt.value = loc.id;
+      opt.textContent = loc.name;
+      select.appendChild(opt);
+    });
+  }
+
+  // Location filter change handler
+  function onTableFilterLocationChange() {
+    const locId = document.getElementById('table-filter-location').value;
+    const bldSelect = document.getElementById('table-filter-building');
+    
+    bldSelect.innerHTML = '<option value="">ทุกอาคาร</option>';
+    if (!locId) {
+      bldSelect.disabled = true;
+      renderACTable();
+      return;
+    }
+
+    const loc = allLocations.find(l => l.id === locId);
+    if (loc && loc.buildings) {
+      loc.buildings.forEach(bld => {
+        const opt = document.createElement('option');
+        opt.value = bld.id;
+        opt.textContent = bld.name;
+        bldSelect.appendChild(opt);
+      });
+      bldSelect.disabled = false;
+    } else {
+      bldSelect.disabled = true;
+    }
+    renderACTable();
+  }
+
+  function onTableFilterBuildingChange() {
+    renderACTable();
+  }
+
+  function clearTableFilters() {
+    document.getElementById('table-search-input').value = '';
+    document.getElementById('table-filter-location').value = '';
+    document.getElementById('table-filter-building').innerHTML = '<option value="">ทุกอาคาร</option>';
+    document.getElementById('table-filter-building').disabled = true;
+    document.getElementById('table-filter-status').value = '';
+    renderACTable();
+  }
+
+  // Sort logic
+  function sortTable(field) {
+    if (sortField === field) {
+      sortAscending = !sortAscending;
+    } else {
+      sortField = field;
+      sortAscending = true;
+    }
+    
+    // Update UI icons
+    document.getElementById('sort-icon-name').innerHTML = '';
+    document.getElementById('sort-icon-type').innerHTML = '';
+    document.getElementById('sort-icon-status').innerHTML = '';
+    
+    const icon = sortAscending ? ' ▲' : ' ▼';
+    document.getElementById(`sort-icon-${field}`).textContent = icon;
+    
+    renderACTable();
+  }
+
+  // Table rendering logic
+  function renderACTable() {
+    const tbody = document.getElementById('table-body');
+    const emptyState = document.getElementById('table-empty-state');
+    
+    const searchQuery = document.getElementById('table-search-input').value.toLowerCase().trim();
+    const filterLoc = document.getElementById('table-filter-location').value;
+    const filterBld = document.getElementById('table-filter-building').value;
+    const filterStatus = document.getElementById('table-filter-status').value;
+
+    // Filter
+    let filtered = allACs.filter(ac => {
+      // Search
+      const matchesSearch = !searchQuery || 
+        ac.name.toLowerCase().includes(searchQuery) ||
+        (ac.serialNumber && ac.serialNumber.toLowerCase().includes(searchQuery)) ||
+        (ac.room && ac.room.toLowerCase().includes(searchQuery)) ||
+        (ac.brand && ac.brand.toLowerCase().includes(searchQuery)) ||
+        (ac.model && ac.model.toLowerCase().includes(searchQuery));
+        
+      const matchesLoc = !filterLoc || ac.locationId === filterLoc;
+      const matchesBld = !filterBld || ac.buildingId === filterBld;
+      const matchesStatus = !filterStatus || ac.status === filterStatus;
+
+      return matchesSearch && matchesLoc && matchesBld && matchesStatus;
+    });
+
+    // Sort
+    filtered.sort((a, b) => {
+      let valA = a[sortField] || '';
+      let valB = b[sortField] || '';
+      
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+      
+      if (valA < valB) return sortAscending ? -1 : 1;
+      if (valA > valB) return sortAscending ? 1 : -1;
+      return 0;
+    });
+
+    tbody.innerHTML = '';
+    if (filtered.length === 0) {
+      emptyState.classList.remove('hidden');
+      return;
+    }
+    emptyState.classList.add('hidden');
+
+    filtered.forEach(ac => {
+      const tr = document.createElement('tr');
+      tr.className = "hover:bg-slate-50 transition duration-150";
+
+      // Status pill
+      let statusLabel = '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">ใช้งานปกติ</span>';
+      if (ac.status === 'check') statusLabel = '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800">ต้องตรวจสอบ</span>';
+      if (ac.status === 'repair') statusLabel = '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-800">ต้องซ่อม</span>';
+      if (ac.status === 'broken') statusLabel = '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-rose-100 text-rose-800">ชำรุด</span>';
+      if (ac.status === 'inactive') statusLabel = '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-slate-200 text-slate-700">ไม่ได้ใช้งาน</span>';
+
+      const loc = allLocations.find(l => l.id === ac.locationId);
+      const bld = loc ? loc.buildings.find(b => b.id === ac.buildingId) : null;
+      const flr = bld ? bld.floors.find(f => f.id === ac.floorId) : null;
+
+      const locationPath = `${loc?.name || '-'} / ${bld?.name || '-'} / ${flr?.name || '-'}`;
+
+      tr.innerHTML = `
+        <td class="px-6 py-4 font-bold text-brand-900">${ac.name}</td>
+        <td class="px-6 py-4">
+          <div class="font-medium text-slate-800">${ac.room || '-'}</div>
+          <div class="text-xs text-slate-400 mt-0.5">${locationPath}</div>
+        </td>
+        <td class="px-6 py-4 text-slate-600">${ac.type || '-'}</td>
+        <td class="px-6 py-4 font-medium text-slate-700">${ac.btu ? ac.btu + ' BTU' : '-'}</td>
+        <td class="px-6 py-4 text-slate-600">${ac.brand || '-'} / ${ac.model || '-'}</td>
+        <td class="px-6 py-4 font-mono text-xs text-slate-500">${ac.serialNumber || '-'}</td>
+        <td class="px-6 py-4">${statusLabel}</td>
+        <td class="px-6 py-4 text-center text-slate-400">
+          ${ac.images && ac.images.length > 0 ? `<i data-lucide="image" class="w-4 h-4 mx-auto text-brand-500"></i>` : `<i data-lucide="image-off" class="w-4 h-4 mx-auto text-slate-300"></i>`}
+        </td>
+        <td class="px-6 py-4 text-right">
+          <a href="/workspace/${ac.locationId}/${ac.buildingId}/${ac.floorId}?highlight=${ac.id}" class="inline-flex items-center gap-1 text-brand-500 hover:text-brand-800 font-bold">
+            <i data-lucide="map-pin" class="w-3.5 h-3.5"></i> เข้าจัดการ
+          </a>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+    lucide.createIcons();
+  }
+</script>
+{% endblock %}
