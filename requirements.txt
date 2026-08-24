@@ -1,7 +1,7 @@
-fastapi==0.104.1
-jinja2==3.1.2
-sqlalchemy==2.0.23
-sqlalchemy-libsql==0.2.1
-pydantic==2.5.2
-python-multipart==0.0.6
-uvicorn==0.24.0.post1
+fastapi
+jinja2
+sqlalchemy
+sqlalchemy-libsql
+pydantic
+python-multipart
+uvicorn
