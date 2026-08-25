@@ -434,7 +434,7 @@ class ACCreate(BaseModel):
     updatedBy: Optional[str] = None
 
 class ACUpdate(BaseModel):
-    name: str
+    name: Optional[str] = None
     brand: Optional[str] = None
     model: Optional[str] = None
     type: Optional[str] = None
