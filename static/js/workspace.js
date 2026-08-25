@@ -1128,6 +1128,22 @@ function clearHistoryDateFilter() {
   renderHistoryModalList();
 }
 
+function getLocalDateString(dateTimeStr) {
+  if (!dateTimeStr) return '';
+  try {
+    const date = new Date(dateTimeStr);
+    if (isNaN(date.getTime())) {
+      return dateTimeStr.substring(0, 10);
+    }
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  } catch (e) {
+    return dateTimeStr.substring(0, 10);
+  }
+}
+
 function renderHistoryModalList() {
   const container = document.getElementById('history-modal-list');
   if (!container) return;
@@ -1140,7 +1156,8 @@ function renderHistoryModalList() {
   let filteredLogs = [...ac.maintenanceHistory];
   if (state.historyDateFilter) {
     filteredLogs = filteredLogs.filter(log => {
-      return log.date === state.historyDateFilter;
+      const logLocalDate = getLocalDateString(log.date);
+      return logLocalDate === state.historyDateFilter;
     });
   }
 
