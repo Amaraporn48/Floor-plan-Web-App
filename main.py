@@ -1,5 +1,5 @@
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import List, Optional
 import bcrypt
 import jwt
@@ -1035,7 +1035,7 @@ def create_ac(data: ACCreate, current_user: User = Depends(get_current_user), db
         room=data.room,
         x=data.x,
         y=data.y,
-        updated_at=data.updatedAt or datetime.now().isoformat(),
+        updated_at=data.updatedAt or datetime.now(timezone.utc).isoformat(),
         updated_by=current_user.full_name
     )
     db.add(ac)
@@ -1048,7 +1048,7 @@ def create_ac(data: ACCreate, current_user: User = Depends(get_current_user), db
     # Auto initialize first history log
     db.add(MaintenanceLog(
         ac_id=ac.id,
-        date=ac.install_date or datetime.now().isoformat(),
+        date=ac.install_date or datetime.now(timezone.utc).isoformat(),
         note=ac.note or "ติดตั้งเครื่องแอร์ใหม่เข้าระบบ",
         technician=ac.updated_by,
         status=ac.status
@@ -1091,7 +1091,7 @@ def update_ac(ac_id: str, data: ACUpdate, current_user: User = Depends(get_curre
     if data.y is not None:
         ac.y = data.y
         
-    ac.updated_at = data.updatedAt or datetime.now().isoformat()
+    ac.updated_at = data.updatedAt or datetime.now(timezone.utc).isoformat()
     ac.updated_by = current_user.full_name
     
     # Update images
@@ -1124,7 +1124,7 @@ def create_maintenance_log(ac_id: str, data: LogCreate, current_user: User = Dep
         
     log = MaintenanceLog(
         ac_id=ac.id,
-        date=datetime.now().isoformat(),
+        date=datetime.now(timezone.utc).isoformat(),
         note=data.note,
         technician=current_user.full_name,
         status=data.status
@@ -1134,7 +1134,7 @@ def create_maintenance_log(ac_id: str, data: LogCreate, current_user: User = Dep
     # Synchronize latest log data to the main AC record
     ac.status = data.status
     ac.note = data.note
-    ac.updated_at = datetime.now().isoformat()
+    ac.updated_at = datetime.now(timezone.utc).isoformat()
     ac.updated_by = current_user.full_name
     
     db.commit()
@@ -1157,7 +1157,7 @@ def update_maintenance_log(ac_id: str, log_id: int, data: LogCreate, current_use
     # Synchronize latest log data to the main AC record
     ac.status = data.status
     ac.note = data.note
-    ac.updated_at = datetime.now().isoformat()
+    ac.updated_at = datetime.now(timezone.utc).isoformat()
     ac.updated_by = current_user.full_name
     
     db.commit()
@@ -1186,7 +1186,7 @@ def delete_maintenance_log(ac_id: str, log_id: int, current_user: User = Depends
         ac.status = "normal"
         ac.note = ""
         ac.updated_by = ""
-    ac.updated_at = datetime.now().isoformat()
+    ac.updated_at = datetime.now(timezone.utc).isoformat()
     
     db.commit()
     return ac_to_dict(ac)
