@@ -42,8 +42,13 @@ window.addEventListener('DOMContentLoaded', async () => {
 // Fetch all air conditioners for this floor and render markers + sidebar lists
 async function fetchAndRenderWorkspace() {
   try {
-    const res = await fetch(`/api/v1/acs?locationId=${state.locationId}&buildingId=${state.buildingId}&floorId=${state.floorId}`);
-    state.acs = await res.json();
+    if (window.initialAcs && window.initialAcs.length > 0) {
+      state.acs = window.initialAcs;
+      window.initialAcs = null; // Clear to allow subsequent refreshes to fetch fresh data
+    } else {
+      const res = await fetch(`/api/v1/acs?locationId=${state.locationId}&buildingId=${state.buildingId}&floorId=${state.floorId}`);
+      state.acs = await res.json();
+    }
     
     renderMarkers();
     renderSidebarACList();

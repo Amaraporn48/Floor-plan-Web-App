@@ -465,11 +465,16 @@ def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, high
     
     if not loc or not bld or not flr:
         raise HTTPException(status_code=404, detail="แผนผังชั้นที่ระบุไม่ถูกต้อง")
+
+    # Query and serialize AC units for this floor to render instantly on load
+    acs = db.query(AirConditioner).filter_by(location_id=loc_id, building_id=bld_id, floor_id=flr.id).all()
+    ac_list = [ac_to_dict(ac) for ac in acs]
         
     return templates.TemplateResponse(request, "workspace.html", {
         "location": loc,
         "building": bld,
         "floor": flr,
+        "initial_acs": ac_list,
         "highlight_ac_id": highlight or "",
         "active_tab": "locations"
     })
