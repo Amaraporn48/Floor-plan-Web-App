@@ -17,9 +17,9 @@
     <div class="flex items-center gap-3">
       <label for="dashboard-location-dropdown" class="text-sm font-bold text-slate-700 whitespace-nowrap">โรงพยาบาล/สถานที่:</label>
       <select id="dashboard-location-dropdown" onchange="onDashboardLocationFilterChange()" class="border border-slate-300 rounded-lg p-2 bg-white text-slate-800 focus:outline-none focus:border-brand-500 text-sm min-w-[240px]">
-        <option value="">ทุกสถานที่ (รวมทั้งหมด)</option>
+        <option value="" data-buildings="{{ stats.locations_count }}" data-floors="0">ทุกสถานที่ (รวมทั้งหมด)</option>
         {% for loc in locations %}
-          <option value="{{ loc.id }}">{{ loc.name }}</option>
+          <option value="{{ loc.id }}" data-buildings="{{ loc.buildings | length }}" data-floors="{{ loc.floors_count }}">{{ loc.name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -50,10 +50,10 @@
       </div>
       <div>
         <div class="flex items-baseline gap-1">
-          <span class="text-2xl font-bold text-slate-800">{{ stats.locations_count }}</span>
-          <span class="text-xs text-slate-500 font-bold">สถานที่</span>
+          <span id="stats-loc-val" class="text-2xl font-bold text-slate-800">{{ stats.locations_count }}</span>
+          <span id="stats-loc-lbl" class="text-xs text-slate-500 font-bold">สถานที่</span>
         </div>
-        <div class="text-xs text-slate-400 font-medium mt-0.5">ระบบ Cloud Database</div>
+        <div id="stats-loc-sub" class="text-xs text-slate-400 font-medium mt-0.5">ระบบ Cloud Database</div>
       </div>
     </div>
 
@@ -250,7 +250,27 @@
 
   // Filter dropdown change handler
   function onDashboardLocationFilterChange() {
-    const selectedLocId = document.getElementById('dashboard-location-dropdown').value;
+    const dropdown = document.getElementById('dashboard-location-dropdown');
+    const selectedOption = dropdown.options[dropdown.selectedIndex];
+    const selectedLocId = dropdown.value;
+    
+    // Update stats card dynamically
+    const statsVal = document.getElementById('stats-loc-val');
+    const statsLbl = document.getElementById('stats-loc-lbl');
+    const statsSub = document.getElementById('stats-loc-sub');
+
+    if (selectedLocId) {
+      const buildings = selectedOption.getAttribute('data-buildings');
+      const floors = selectedOption.getAttribute('data-floors');
+      statsVal.textContent = buildings;
+      statsLbl.textContent = 'อาคาร';
+      statsSub.textContent = `${floors} ชั้นทั้งหมด`;
+    } else {
+      statsVal.textContent = "{{ stats.locations_count }}";
+      statsLbl.textContent = 'สถานที่';
+      statsSub.textContent = 'ระบบ Cloud Database';
+    }
+
     const cards = document.querySelectorAll('.location-card');
     cards.forEach(card => {
       const locId = card.getAttribute('data-loc-id');
