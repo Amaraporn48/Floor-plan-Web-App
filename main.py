@@ -201,12 +201,18 @@ def seed_db(db: Session):
 # Initialize database tables on startup
 @app.on_event("startup")
 def on_startup():
-    init_db()
-    db = SessionLocal()
     try:
-        seed_db(db)
-    finally:
-        db.close()
+        init_db()
+        db = SessionLocal()
+        try:
+            seed_db(db)
+        finally:
+            db.close()
+    except Exception as e:
+        import traceback
+        print("DATABASE STARTUP ERROR:", str(e))
+        traceback.print_exc()
+        raise e
 
 # DB Session Dependency
 def get_db():

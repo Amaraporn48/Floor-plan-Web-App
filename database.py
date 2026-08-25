@@ -15,6 +15,11 @@ if TURSO_DATABASE_URL and TURSO_AUTH_TOKEN:
     elif not db_url.startswith("sqlite+"):
         db_url = f"sqlite+{db_url}"
 
+    if "?" not in db_url:
+        db_url = f"{db_url}?secure=true"
+    elif "secure=" not in db_url:
+        db_url = f"{db_url}&secure=true"
+
     engine = create_engine(
         db_url,
         connect_args={"auth_token": TURSO_AUTH_TOKEN}
