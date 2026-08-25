@@ -17,9 +17,25 @@
     <div class="flex items-center gap-3">
       <label for="dashboard-location-dropdown" class="text-sm font-bold text-slate-700 whitespace-nowrap">โรงพยาบาล/สถานที่:</label>
       <select id="dashboard-location-dropdown" onchange="onDashboardLocationFilterChange()" class="border border-slate-300 rounded-lg p-2 bg-white text-slate-800 focus:outline-none focus:border-brand-500 text-sm min-w-[240px]">
-        <option value="" data-buildings="{{ stats.locations_count }}" data-floors="0">ทุกสถานที่ (รวมทั้งหมด)</option>
+        <option value="" 
+                data-buildings="{{ stats.locations_count }}" 
+                data-floors="0" 
+                data-acs="{{ stats.acs_count }}"
+                data-normal="{{ stats.normal_count }}"
+                data-check="{{ stats.check_count }}"
+                data-repair="{{ stats.repair_count }}"
+                data-broken="{{ stats.broken_count }}"
+                data-inactive="{{ stats.inactive_count }}">ทุกสถานที่ (รวมทั้งหมด)</option>
         {% for loc in locations %}
-          <option value="{{ loc.id }}" data-buildings="{{ loc.buildings | length }}" data-floors="{{ loc.floors_count }}">{{ loc.name }}</option>
+          <option value="{{ loc.id }}" 
+                  data-buildings="{{ loc.buildings | length }}" 
+                  data-floors="{{ loc.floors_count }}"
+                  data-acs="{{ loc.acs_count }}"
+                  data-normal="{{ loc.completed_count }}"
+                  data-check="{{ loc.check_count }}"
+                  data-repair="{{ loc.repair_count }}"
+                  data-broken="{{ loc.broken_count }}"
+                  data-inactive="{{ loc.inactive_count }}">{{ loc.name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -63,7 +79,7 @@
         <i data-lucide="pocket" class="w-6 h-6"></i>
       </div>
       <div>
-        <div class="text-2xl font-bold text-slate-800">{{ stats.acs_count }}</div>
+        <div id="stats-ac-val" class="text-2xl font-bold text-slate-800">{{ stats.acs_count }}</div>
         <div class="text-xs text-slate-500 font-medium">เครื่องปรับอากาศทั้งหมด</div>
       </div>
     </div>
@@ -74,7 +90,7 @@
         <i data-lucide="check-circle-2" class="w-6 h-6"></i>
       </div>
       <div>
-        <div class="text-2xl font-bold text-slate-800">{{ stats.normal_count }}</div>
+        <div id="stats-normal-val" class="text-2xl font-bold text-slate-800">{{ stats.normal_count }}</div>
         <div class="text-xs text-slate-500 font-medium">ใช้งานปกติ (สีเขียว)</div>
       </div>
     </div>
@@ -85,7 +101,7 @@
         <i data-lucide="alert-triangle" class="w-6 h-6"></i>
       </div>
       <div>
-        <div class="text-2xl font-bold text-slate-800">{{ stats.check_count }}</div>
+        <div id="stats-check-val" class="text-2xl font-bold text-slate-800">{{ stats.check_count }}</div>
         <div class="text-xs text-slate-500 font-medium">ต้องตรวจสอบ (สีเหลือง)</div>
       </div>
     </div>
@@ -102,7 +118,7 @@
           <div class="text-xs text-slate-500">แก้ไขปัญหาหน้างาน</div>
         </div>
       </div>
-      <div class="text-2xl font-bold text-slate-800">{{ stats.repair_count }}</div>
+      <div id="stats-repair-val" class="text-2xl font-bold text-slate-800">{{ stats.repair_count }}</div>
     </div>
 
     <!-- Broken -->
@@ -114,7 +130,7 @@
           <div class="text-xs text-slate-500">ต้องเสนอเปลี่ยนอะไหล่</div>
         </div>
       </div>
-      <div class="text-2xl font-bold text-slate-800">{{ stats.broken_count }}</div>
+      <div id="stats-broken-val" class="text-2xl font-bold text-slate-800">{{ stats.broken_count }}</div>
     </div>
 
     <!-- Inactive -->
@@ -126,7 +142,7 @@
           <div class="text-xs text-slate-500">ปิดการทำงานชั่วคราว</div>
         </div>
       </div>
-      <div class="text-2xl font-bold text-slate-800">{{ stats.inactive_count }}</div>
+      <div id="stats-inactive-val" class="text-2xl font-bold text-slate-800">{{ stats.inactive_count }}</div>
     </div>
   </div>
 
@@ -259,16 +275,37 @@
     const statsLbl = document.getElementById('stats-loc-lbl');
     const statsSub = document.getElementById('stats-loc-sub');
 
+    const statsAc = document.getElementById('stats-ac-val');
+    const statsNormal = document.getElementById('stats-normal-val');
+    const statsCheck = document.getElementById('stats-check-val');
+    const statsRepair = document.getElementById('stats-repair-val');
+    const statsBroken = document.getElementById('stats-broken-val');
+    const statsInactive = document.getElementById('stats-inactive-val');
+
     if (selectedLocId) {
       const buildings = selectedOption.getAttribute('data-buildings');
       const floors = selectedOption.getAttribute('data-floors');
       statsVal.textContent = buildings;
       statsLbl.textContent = 'อาคาร';
       statsSub.textContent = `${floors} ชั้นทั้งหมด`;
+
+      statsAc.textContent = selectedOption.getAttribute('data-acs');
+      statsNormal.textContent = selectedOption.getAttribute('data-normal');
+      statsCheck.textContent = selectedOption.getAttribute('data-check');
+      statsRepair.textContent = selectedOption.getAttribute('data-repair');
+      statsBroken.textContent = selectedOption.getAttribute('data-broken');
+      statsInactive.textContent = selectedOption.getAttribute('data-inactive');
     } else {
       statsVal.textContent = "{{ stats.locations_count }}";
       statsLbl.textContent = 'สถานที่';
       statsSub.textContent = 'ระบบ Cloud Database';
+
+      statsAc.textContent = "{{ stats.acs_count }}";
+      statsNormal.textContent = "{{ stats.normal_count }}";
+      statsCheck.textContent = "{{ stats.check_count }}";
+      statsRepair.textContent = "{{ stats.repair_count }}";
+      statsBroken.textContent = "{{ stats.broken_count }}";
+      statsInactive.textContent = "{{ stats.inactive_count }}";
     }
 
     const cards = document.querySelectorAll('.location-card');

@@ -602,6 +602,10 @@ def page_dashboard(request: Request, current_user: User = Depends(get_current_us
             "buildings_list": ", ".join(bld_names) if bld_names else "ไม่มีอาคาร",
             "acs_count": len(loc_acs),
             "completed_count": sum(1 for ac in loc_acs if ac.status == "normal"),
+            "check_count": sum(1 for ac in loc_acs if ac.status == "check"),
+            "repair_count": sum(1 for ac in loc_acs if ac.status == "repair"),
+            "broken_count": sum(1 for ac in loc_acs if ac.status == "broken"),
+            "inactive_count": sum(1 for ac in loc_acs if ac.status == "inactive"),
             "buildings": [{"id": b.id, "name": b.name} for b in loc.buildings]
         })
 
