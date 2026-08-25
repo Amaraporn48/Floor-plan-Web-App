@@ -526,6 +526,23 @@ def handle_logout():
     response.delete_cookie("access_token")
     return response
 
+# Change Password Request Schema
+class ChangePasswordRequest(BaseModel):
+    old_password: str
+    new_password: str
+
+# Change Password Endpoint
+@app.post("/api/v1/users/change-password")
+def change_user_password(data: ChangePasswordRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not verify_password(data.old_password, current_user.hashed_password):
+        raise HTTPException(status_code=400, detail="รหัสผ่านปัจจุบันไม่ถูกต้อง")
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร")
+        
+    current_user.hashed_password = hash_password(data.new_password)
+    db.commit()
+    return {"status": "success", "message": "เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว"}
+
 # User Administration Panel (Admin Only)
 @app.get("/admin/users", response_class=HTMLResponse)
 def page_admin_users(request: Request, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
