@@ -107,11 +107,6 @@
                     {% endfor %}
                   </select>
 
-                  <!-- Building Dropdown -->
-                  <select id="assign-bld-{{ u.id }}" onchange="updateFloorDropdown('{{ u.id }}')" disabled class="px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500 bg-white disabled:opacity-50">
-                    <option value="">-- เลือกอาคาร --</option>
-                  </select>
-
                   <button onclick="handleAddAssignment('{{ u.id }}')" class="px-3 py-1 bg-brand-800 hover:bg-slate-700 text-white rounded text-xs font-bold transition flex items-center gap-1">
                     <i data-lucide="plus" class="w-3.5 h-3.5"></i> มอบหมายงาน
                   </button>
@@ -181,35 +176,9 @@
     {% endfor %}
   ];
 
-  // Update Building dropdown options when Location is selected
+  // Update Building and Floor checklist when Location is selected
   function updateBuildingDropdown(userId) {
     const locId = document.getElementById(`assign-loc-${userId}`).value;
-    const bldSelect = document.getElementById(`assign-bld-${userId}`);
-    const wrapper = document.getElementById(`assign-flrs-wrapper-${userId}`);
-
-    // Reset dropdowns
-    bldSelect.innerHTML = '<option value="">-- เลือกอาคาร --</option>';
-    bldSelect.disabled = true;
-    wrapper.classList.add('hidden');
-
-    if (!locId) return;
-
-    const loc = LOCATIONS_DATA.find(l => l.id === locId);
-    if (loc && loc.buildings.length > 0) {
-      loc.buildings.forEach(bld => {
-        const opt = document.createElement("option");
-        opt.value = bld.id;
-        opt.textContent = bld.name;
-        bldSelect.appendChild(opt);
-      });
-      bldSelect.disabled = false;
-    }
-  }
-
-  // Update Floor checkboxes when Building is selected
-  function updateFloorDropdown(userId) {
-    const locId = document.getElementById(`assign-loc-${userId}`).value;
-    const bldId = document.getElementById(`assign-bld-${userId}`).value;
     const wrapper = document.getElementById(`assign-flrs-wrapper-${userId}`);
     const container = document.getElementById(`assign-flrs-list-${userId}`);
     const selectAll = document.getElementById(`select-all-${userId}`);
@@ -219,31 +188,65 @@
     selectAll.checked = false;
     wrapper.classList.add('hidden');
 
-    if (!locId || !bldId) return;
+    if (!locId) return;
 
     const loc = LOCATIONS_DATA.find(l => l.id === locId);
-    if (loc) {
-      const bld = loc.buildings.find(b => b.id === bldId);
-      if (bld && bld.floors.length > 0) {
+    if (loc && loc.buildings.length > 0) {
+      loc.buildings.forEach(bld => {
+        if (bld.floors.length === 0) return;
+
+        // Create Building Container
+        const bldDiv = document.createElement("div");
+        bldDiv.className = "col-span-full border-t border-slate-200/80 pt-3 mt-2 first:border-0 first:pt-0 first:mt-0";
+        bldDiv.innerHTML = `
+          <div class="flex items-center gap-2 mb-2 bg-slate-100/60 px-2.5 py-1.5 rounded-lg">
+            <input type="checkbox" id="chk-bld-${userId}-${bld.id}" onchange="toggleSelectBuildingFloors('${userId}', '${bld.id}')" class="bld-chk-${userId} rounded border-slate-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer">
+            <label for="chk-bld-${userId}-${bld.id}" class="text-xs font-black text-slate-800 cursor-pointer select-none">${bld.name}</label>
+          </div>
+          <div id="bld-floors-${userId}-${bld.id}" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 pl-5 pb-2">
+            <!-- Floors nested checklist here -->
+          </div>
+        `;
+        container.appendChild(bldDiv);
+
+        // Inject Floors for this building
+        const floorsContainer = document.getElementById(`bld-floors-${userId}-${bld.id}`);
         bld.floors.forEach(flr => {
-          const div = document.createElement("div");
-          div.className = "flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm hover:border-brand-300 transition duration-150";
-          div.innerHTML = `
-            <input type="checkbox" id="chk-${userId}-${flr.id}" value="${flr.id}" class="floor-chk-${userId} w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer">
+          const flrDiv = document.createElement("div");
+          flrDiv.className = "flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm hover:border-brand-300 transition duration-150";
+          flrDiv.innerHTML = `
+            <input type="checkbox" id="chk-${userId}-${flr.id}" value="${flr.id}" data-bld="${bld.id}" class="floor-chk-${userId} w-4.5 h-4.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer">
             <label for="chk-${userId}-${flr.id}" class="text-xs font-semibold text-slate-700 cursor-pointer select-none truncate flex-1">${flr.name}</label>
           `;
-          container.appendChild(div);
+          floorsContainer.appendChild(flrDiv);
         });
-        wrapper.classList.remove('hidden');
-      }
+      });
+      wrapper.classList.remove('hidden');
     }
   }
 
-  // Toggle all checkboxes in the floor checklist
+  // Toggle all floors checkboxes under a specific building
+  function toggleSelectBuildingFloors(userId, bldId) {
+    const isChecked = document.getElementById(`chk-bld-${userId}-${bldId}`).checked;
+    const checkboxes = document.querySelectorAll(`.floor-chk-${userId}[data-bld="${bldId}"]`);
+    checkboxes.forEach(cb => {
+      cb.checked = isChecked;
+    });
+  }
+
+  // Toggle all checkboxes in the entire location checklist
   function toggleSelectAllFloors(userId) {
     const isChecked = document.getElementById(`select-all-${userId}`).checked;
-    const checkboxes = document.querySelectorAll(`.floor-chk-${userId}`);
-    checkboxes.forEach(cb => {
+    
+    // Toggle all buildings
+    const bldCheckboxes = document.querySelectorAll(`.bld-chk-${userId}`);
+    bldCheckboxes.forEach(cb => {
+      cb.checked = isChecked;
+    });
+
+    // Toggle all floors
+    const floorCheckboxes = document.querySelectorAll(`.floor-chk-${userId}`);
+    floorCheckboxes.forEach(cb => {
       cb.checked = isChecked;
     });
   }
