@@ -224,20 +224,12 @@
   }
 
   // Navigate to location floors or detail page
-  async function navigateToLocation(locId) {
-    try {
-      const res = await fetch('/api/v1/locations');
-      const locations = await res.json();
-      const loc = locations.find(l => l.id === locId);
-      
-      if (loc && loc.buildings && loc.buildings.length > 0) {
-        // Direct to first building floors selection list
-        window.location.href = `/locations/${locId}/buildings/${loc.buildings[0].id}`;
-      } else {
-        // Go to locations manager to let them create a building
-        window.location.href = '/locations';
-      }
-    } catch (e) {
+  function navigateToLocation(locId) {
+    const locationsData = {{ locations | tojson }};
+    const loc = locationsData.find(l => l.id === locId);
+    if (loc && loc.buildings && loc.buildings.length > 0) {
+      window.location.href = `/locations/${locId}/buildings/${loc.buildings[0].id}`;
+    } else {
       window.location.href = '/locations';
     }
   }

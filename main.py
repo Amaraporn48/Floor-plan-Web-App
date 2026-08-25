@@ -366,7 +366,8 @@ def page_dashboard(request: Request, db: Session = Depends(get_db)):
             "floors_count": floors_count,
             "buildings_list": ", ".join(bld_names) if bld_names else "ไม่มีอาคาร",
             "acs_count": len(loc_acs),
-            "completed_count": sum(1 for ac in loc_acs if ac.status == "normal")
+            "completed_count": sum(1 for ac in loc_acs if ac.status == "normal"),
+            "buildings": [{"id": b.id, "name": b.name} for b in loc.buildings]
         })
 
     return templates.TemplateResponse(request, "dashboard.html", {
