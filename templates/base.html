@@ -67,13 +67,30 @@
           <a href="/acs" class="px-4 py-2 rounded-md text-sm font-medium transition {% if active_tab == 'acs' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} flex items-center gap-2">
             <i data-lucide="list" class="w-4 h-4"></i> รายการเครื่องปรับอากาศ
           </a>
+          {% if current_user and current_user.role == 'admin' %}
+          <a href="/admin/users" class="px-4 py-2 rounded-md text-sm font-medium transition {% if active_tab == 'users' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} flex items-center gap-2">
+            <i data-lucide="users" class="w-4 h-4"></i> จัดการผู้ใช้งาน
+          </a>
+          {% endif %}
         </nav>
 
-        <!-- Demo / Server Mode -->
+        <!-- Demo / Server Mode & User Profile -->
         <div class="flex items-center gap-3">
           <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
             <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> Cloud DB Mode
           </span>
+          
+          {% if current_user %}
+          <div class="flex items-center gap-2 border-l border-slate-700 pl-3">
+            <div class="hidden lg:flex flex-col text-right">
+              <span class="text-xs font-bold text-slate-100">{{ current_user.full_name }}</span>
+              <span class="text-[9px] text-slate-400 uppercase font-bold">{{ current_user.role }}</span>
+            </div>
+            <a href="/logout" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition duration-150" title="ออกจากระบบ">
+              <i data-lucide="log-out" class="w-4 h-4"></i>
+            </a>
+          </div>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -93,6 +110,18 @@
       <i data-lucide="list" class="w-5 h-5"></i>
       <span>รายการแอร์</span>
     </a>
+    {% if current_user and current_user.role == 'admin' %}
+    <a href="/admin/users" class="flex flex-col items-center gap-0.5 text-xs {% if active_tab == 'users' %}text-white{% else %}text-slate-400 hover:text-white{% endif %} py-1">
+      <i data-lucide="users" class="w-5 h-5"></i>
+      <span>จัดการช่าง</span>
+    </a>
+    {% endif %}
+    {% if current_user %}
+    <a href="/logout" class="flex flex-col items-center gap-0.5 text-xs text-slate-400 hover:text-red-400 py-1">
+      <i data-lucide="log-out" class="w-5 h-5"></i>
+      <span>ออก</span>
+    </a>
+    {% endif %}
   </div>
 
   <!-- Breadcrumbs Bar -->
@@ -105,9 +134,11 @@
         {% block breadcrumbs %}{% endblock %}
       </div>
       <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500">
+        {% if current_user %}
         <span class="flex items-center gap-1 text-emerald-500">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> ช่างออนไลน์: ช่างสมชาย มั่นคง
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> ผู้ใช้งาน: {{ current_user.full_name }} ({{ current_user.role }})
         </span>
+        {% endif %}
       </div>
     </div>
   </section>

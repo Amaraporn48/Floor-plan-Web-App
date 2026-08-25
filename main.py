@@ -1,7 +1,8 @@
-# TECHNICAL WATER - AC Management System (Vercel Build Trigger)
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import List, Optional
+import bcrypt
+import jwt
 from fastapi import FastAPI, Request, Depends, HTTPException, status, Form
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -11,8 +12,40 @@ from sqlalchemy.orm import Session
 
 from database import (
     SessionLocal, init_db,
-    Location, Building, Floor, AirConditioner, ACImage, MaintenanceLog
+    Location, Building, Floor, AirConditioner, ACImage, MaintenanceLog,
+    User, UserAssignment
 )
+
+# JWT Auth Configuration
+JWT_SECRET = os.environ.get("JWT_SECRET", "technical-water-secret-key-123456789")
+JWT_ALGORITHM = "HS256"
+TOKEN_EXPIRE_HOURS = 24
+
+def hash_password(password: str) -> str:
+    salt = bcrypt.gensalt()
+    return bcrypt.hashpw(password.encode('utf-8'), salt).decode('utf-8')
+
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    try:
+        return bcrypt.checkpw(plain_password.encode('utf-8'), hashed_password.encode('utf-8'))
+    except Exception:
+        return False
+
+def create_access_token(user_id: str, username: str, role: str) -> str:
+    expire = datetime.utcnow() + timedelta(hours=TOKEN_EXPIRE_HOURS)
+    to_encode = {
+        "sub": user_id,
+        "username": username,
+        "role": role,
+        "exp": expire
+    }
+    return jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
+
+def decode_access_token(token: str) -> Optional[dict]:
+    try:
+        return jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+    except jwt.PyJWTError:
+        return None
 
 # Initialize FastAPI App
 app = FastAPI(title="TECHNICAL WATER - AC Management System")
@@ -201,6 +234,29 @@ def seed_db(db: Session):
 # Initialize database tables on startup
 @app.on_event("startup")
 def on_startup():
+    # Ensure default admin exists in the database (local or cloud)
+    try:
+        init_db()
+        db = SessionLocal()
+        try:
+            admin_exists = db.query(User).filter_by(role="admin").first()
+            if not admin_exists:
+                print("Seeding default admin user...")
+                admin = User(
+                    id="admin-uuid-1111-2222",
+                    username="admin",
+                    hashed_password=hash_password("admin1234"),
+                    role="admin",
+                    full_name="Admin System"
+                )
+                db.add(admin)
+                db.commit()
+                print("Default admin user created: admin / admin1234")
+        finally:
+            db.close()
+    except Exception as e:
+        print("Error seeding default admin:", str(e))
+
     # Skip DB initialization on Vercel production to optimize cold-start speed
     if os.environ.get("TURSO_DATABASE_URL"):
         print("Running in production mode (Turso Cloud DB). Skipping startup init/seeding.")
@@ -227,10 +283,88 @@ def get_db():
     finally:
         db.close()
 
+# User Session Dependency Injection (Cookie-Based JWT Auth)
+def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+            
+    if not token:
+        if "text/html" in request.headers.get("accept", ""):
+            raise HTTPException(
+                status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+                headers={"Location": "/login"}
+            )
+        raise HTTPException(status_code=401, detail="Not authenticated")
+        
+    payload = decode_access_token(token)
+    if not payload:
+        if "text/html" in request.headers.get("accept", ""):
+            raise HTTPException(
+                status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+                headers={"Location": "/login"}
+            )
+        raise HTTPException(status_code=401, detail="Session expired")
+        
+    user_id = payload.get("sub")
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        if "text/html" in request.headers.get("accept", ""):
+            raise HTTPException(
+                status_code=status.HTTP_307_TEMPORARY_REDIRECT,
+                headers={"Location": "/login"}
+            )
+        raise HTTPException(status_code=401, detail="User not found")
+        
+    return user
+
+def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Admin permissions required")
+    return current_user
+
+def get_user_locations_query(user: User, db: Session):
+    if user.role == "admin":
+        return db.query(Location)
+    else:
+        return (
+            db.query(Location)
+            .join(UserAssignment, UserAssignment.location_id == Location.id)
+            .filter(UserAssignment.user_id == user.id)
+        )
+
+def check_location_access(user: User, location_id: str, db: Session):
+    if user.role == "admin":
+        return True
+    assignment = (
+        db.query(UserAssignment)
+        .filter_by(user_id=user.id, location_id=location_id)
+        .first()
+    )
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="คุณไม่มีสิทธิ์เข้าถึงสถานที่นี้"
+        )
+    return True
+
+
+
 # Pydantic schemas for REST API validations
 class SyncPayload(BaseModel):
     locations: List[dict]
     acs: List[dict]
+
+class UserCreate(BaseModel):
+    username: str
+    full_name: str
+    password: str
+    role: str
+
+class AssignmentCreate(BaseModel):
+    location_id: str
 
 class LocationCreate(BaseModel):
     id: str
@@ -334,15 +468,85 @@ def ac_to_dict(ac: AirConditioner) -> dict:
         ]
     }
 
-# ==========================================
-# HTML ROUTING PAGES (MPA LAYERS)
-# ==========================================
+# Login Page
+@app.get("/login", response_class=HTMLResponse)
+def page_login(request: Request, error: Optional[str] = None):
+    # If already logged in, redirect to home
+    token = request.cookies.get("access_token")
+    if token and decode_access_token(token):
+        return RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    return templates.TemplateResponse(request, "login.html", {"error": error})
+
+# Handle Login POST
+@app.post("/login")
+def handle_login(request: Request, username: str = Form(...), password: str = Form(...), db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(username=username).first()
+    if not user or not verify_password(password, user.hashed_password):
+        return templates.TemplateResponse(request, "login.html", {"error": "ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง"})
+    
+    # Create token and set in cookie
+    token = create_access_token(user.id, user.username, user.role)
+    response = RedirectResponse(url="/", status_code=status.HTTP_303_SEE_OTHER)
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        max_age=TOKEN_EXPIRE_HOURS * 3600,
+        samesite="lax",
+        secure=False
+    )
+    return response
+
+# Logout Route
+@app.get("/logout")
+def handle_logout():
+    response = RedirectResponse(url="/login", status_code=status.HTTP_303_SEE_OTHER)
+    response.delete_cookie("access_token")
+    return response
+
+# User Administration Panel (Admin Only)
+@app.get("/admin/users", response_class=HTMLResponse)
+def page_admin_users(request: Request, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    users = db.query(User).all()
+    locations = db.query(Location).all()
+    
+    # Map assignments to helper structures for easy rendering
+    user_list = []
+    for u in users:
+        assignments = []
+        for assign in u.assignments:
+            loc = db.query(Location).filter_by(id=assign.location_id).first()
+            if loc:
+                assignments.append({
+                    "location_id": assign.location_id,
+                    "location_name": loc.name
+                })
+        user_list.append({
+            "id": u.id,
+            "username": u.username,
+            "full_name": u.full_name,
+            "role": u.role,
+            "assignments": assignments
+        })
+        
+    return templates.TemplateResponse(request, "admin/users.html", {
+        "users": user_list,
+        "locations": locations,
+        "active_tab": "users",
+        "current_user_id": current_user.id,
+        "current_user": current_user
+    })
 
 # Dashboard Page
 @app.get("/", response_class=HTMLResponse)
-def page_dashboard(request: Request, db: Session = Depends(get_db)):
-    locations = db.query(Location).all()
-    acs = db.query(AirConditioner).all()
+def page_dashboard(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    locations = get_user_locations_query(current_user, db).all()
+    assigned_loc_ids = [l.id for l in locations]
+    
+    if current_user.role == "admin":
+        acs = db.query(AirConditioner).all()
+    else:
+        acs = db.query(AirConditioner).filter(AirConditioner.location_id.in_(assigned_loc_ids)).all() if assigned_loc_ids else []
     
     # Calculate global counters
     stats = {
@@ -378,13 +582,14 @@ def page_dashboard(request: Request, db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "dashboard.html", {
         "stats": stats,
         "locations": loc_list,
-        "active_tab": "dashboard"
+        "active_tab": "dashboard",
+        "current_user": current_user
     })
 
 # Locations List Page
 @app.get("/locations", response_class=HTMLResponse)
-def page_locations(request: Request, db: Session = Depends(get_db)):
-    locations = db.query(Location).all()
+def page_locations(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    locations = get_user_locations_query(current_user, db).all()
     loc_list = []
     for loc in locations:
         floors_count = sum(len(bld.floors) for bld in loc.buildings)
@@ -407,12 +612,14 @@ def page_locations(request: Request, db: Session = Depends(get_db)):
         
     return templates.TemplateResponse(request, "locations.html", {
         "locations": loc_list,
-        "active_tab": "locations"
+        "active_tab": "locations",
+        "current_user": current_user
     })
 
 # Floors List Page (Building Specific)
 @app.get("/locations/{loc_id}/buildings/{bld_id}", response_class=HTMLResponse)
-def page_floors(request: Request, loc_id: str, bld_id: str, db: Session = Depends(get_db)):
+def page_floors(request: Request, loc_id: str, bld_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    check_location_access(current_user, loc_id, db)
     loc = db.query(Location).filter_by(id=loc_id).first()
     bld = db.query(Building).filter_by(id=bld_id, location_id=loc_id).first()
     if not loc or not bld:
@@ -448,12 +655,14 @@ def page_floors(request: Request, loc_id: str, bld_id: str, db: Session = Depend
         "location": loc,
         "building": bld,
         "floors": floor_list,
-        "active_tab": "locations"
+        "active_tab": "locations",
+        "current_user": current_user
     })
 
 # Floor Plan CAD/PDF Interactive Workspace
 @app.get("/workspace/{loc_id}/{bld_id}/{flr_id}", response_class=HTMLResponse)
-def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, highlight: Optional[str] = None, db: Session = Depends(get_db)):
+def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, highlight: Optional[str] = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    check_location_access(current_user, loc_id, db)
     loc = db.query(Location).filter_by(id=loc_id).first()
     bld = db.query(Building).filter_by(id=bld_id, location_id=loc_id).first()
     
@@ -476,24 +685,28 @@ def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, high
         "floor": flr,
         "initial_acs": ac_list,
         "highlight_ac_id": highlight or "",
-        "active_tab": "locations"
+        "active_tab": "locations",
+        "current_user": current_user
     })
 
 # Direct QR Code Route
 @app.get("/ac/{ac_id}")
-def route_qr_code(ac_id: str, db: Session = Depends(get_db)):
+def route_qr_code(ac_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="ไม่พบรหัสเครื่องปรับอากาศนี้ในฐานข้อมูล")
+    
+    check_location_access(current_user, ac.location_id, db)
     
     # Redirect directly to workspace and highlight this AC marker
     return RedirectResponse(url=f"/workspace/{ac.location_id}/{ac.building_id}/{ac.floor_id}?highlight={ac.id}")
 
 # AC List Page
 @app.get("/acs", response_class=HTMLResponse)
-def page_acs(request: Request, db: Session = Depends(get_db)):
+def page_acs(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     return templates.TemplateResponse(request, "acs.html", {
-        "active_tab": "acs"
+        "active_tab": "acs",
+        "current_user": current_user
     })
 
 # ==========================================
@@ -681,10 +894,21 @@ def delete_floor(loc_id: str, bld_id: str, flr_id: str, db: Session = Depends(ge
 
 # Air Conditioners CRUD APIs
 @app.get("/api/v1/acs")
-def get_acs(locationId: Optional[str] = None, buildingId: Optional[str] = None, floorId: Optional[str] = None, db: Session = Depends(get_db)):
+def get_acs(locationId: Optional[str] = None, buildingId: Optional[str] = None, floorId: Optional[str] = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     query = db.query(AirConditioner)
-    if locationId:
-        query = query.filter_by(location_id=locationId)
+    
+    if current_user.role != "admin":
+        assigned_ids = [assign.location_id for assign in current_user.assignments]
+        if locationId:
+            if locationId not in assigned_ids:
+                raise HTTPException(status_code=403, detail="คุณไม่มีสิทธิ์เข้าถึงสถานที่นี้")
+            query = query.filter_by(location_id=locationId)
+        else:
+            query = query.filter(AirConditioner.location_id.in_(assigned_ids)) if assigned_ids else query.filter(False)
+    else:
+        if locationId:
+            query = query.filter_by(location_id=locationId)
+            
     if buildingId:
         query = query.filter_by(building_id=buildingId)
     if floorId:
@@ -693,14 +917,17 @@ def get_acs(locationId: Optional[str] = None, buildingId: Optional[str] = None, 
     return [ac_to_dict(ac) for ac in query.all()]
 
 @app.get("/api/v1/acs/{ac_id}")
-def get_single_ac(ac_id: str, db: Session = Depends(get_db)):
+def get_single_ac(ac_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
+    check_location_access(current_user, ac.location_id, db)
     return ac_to_dict(ac)
 
 @app.post("/api/v1/acs")
-def create_ac(data: ACCreate, db: Session = Depends(get_db)):
+def create_ac(data: ACCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    check_location_access(current_user, data.locationId, db)
+    
     # Validate unique name
     exists = db.query(AirConditioner).filter(AirConditioner.name == data.name).first()
     if exists:
@@ -725,7 +952,7 @@ def create_ac(data: ACCreate, db: Session = Depends(get_db)):
         x=data.x,
         y=data.y,
         updated_at=data.updatedAt or datetime.now().isoformat(),
-        updated_by=data.updatedBy or "ช่างเทคนิค"
+        updated_by=current_user.full_name
     )
     db.add(ac)
     
@@ -747,10 +974,11 @@ def create_ac(data: ACCreate, db: Session = Depends(get_db)):
     return ac_to_dict(ac)
 
 @app.put("/api/v1/acs/{ac_id}")
-def update_ac(ac_id: str, data: ACUpdate, db: Session = Depends(get_db)):
+def update_ac(ac_id: str, data: ACUpdate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
+    check_location_access(current_user, ac.location_id, db)
         
     if data.name:
         ac.name = data.name
@@ -780,7 +1008,7 @@ def update_ac(ac_id: str, data: ACUpdate, db: Session = Depends(get_db)):
         ac.y = data.y
         
     ac.updated_at = data.updatedAt or datetime.now().isoformat()
-    ac.updated_by = data.updatedBy or "ช่างเทคนิค"
+    ac.updated_by = current_user.full_name
     
     # Update images
     if data.images is not None:
@@ -793,26 +1021,28 @@ def update_ac(ac_id: str, data: ACUpdate, db: Session = Depends(get_db)):
     return ac_to_dict(ac)
 
 @app.delete("/api/v1/acs/{ac_id}")
-def delete_ac(ac_id: str, db: Session = Depends(get_db)):
+def delete_ac(ac_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
+    check_location_access(current_user, ac.location_id, db)
     db.delete(ac)
     db.commit()
     return {"status": "success"}
 
 # Maintenance History APIs
 @app.post("/api/v1/acs/{ac_id}/maintenance")
-def create_maintenance_log(ac_id: str, data: LogCreate, db: Session = Depends(get_db)):
+def create_maintenance_log(ac_id: str, data: LogCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
+    check_location_access(current_user, ac.location_id, db)
         
     log = MaintenanceLog(
         ac_id=ac.id,
         date=datetime.now().isoformat(),
         note=data.note,
-        technician=data.technician,
+        technician=current_user.full_name,
         status=data.status
     )
     db.add(log)
@@ -821,38 +1051,40 @@ def create_maintenance_log(ac_id: str, data: LogCreate, db: Session = Depends(ge
     ac.status = data.status
     ac.note = data.note
     ac.updated_at = datetime.now().isoformat()
-    ac.updated_by = data.technician
+    ac.updated_by = current_user.full_name
     
     db.commit()
     return ac_to_dict(ac)
 
 @app.put("/api/v1/acs/{ac_id}/maintenance/{log_id}")
-def update_maintenance_log(ac_id: str, log_id: int, data: LogCreate, db: Session = Depends(get_db)):
+def update_maintenance_log(ac_id: str, log_id: int, data: LogCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
+    check_location_access(current_user, ac.location_id, db)
     log = db.query(MaintenanceLog).filter_by(id=log_id, ac_id=ac_id).first()
     if not log:
         raise HTTPException(status_code=404, detail="Maintenance log not found")
         
     log.note = data.note
-    log.technician = data.technician
+    log.technician = current_user.full_name
     log.status = data.status
     
     # Synchronize latest log data to the main AC record
     ac.status = data.status
     ac.note = data.note
     ac.updated_at = datetime.now().isoformat()
-    ac.updated_by = data.technician
+    ac.updated_by = current_user.full_name
     
     db.commit()
     return ac_to_dict(ac)
 
 @app.delete("/api/v1/acs/{ac_id}/maintenance/{log_id}")
-def delete_maintenance_log(ac_id: str, log_id: int, db: Session = Depends(get_db)):
+def delete_maintenance_log(ac_id: str, log_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
+    check_location_access(current_user, ac.location_id, db)
     log = db.query(MaintenanceLog).filter_by(id=log_id, ac_id=ac_id).first()
     if not log:
         raise HTTPException(status_code=404, detail="Maintenance log not found")
@@ -874,3 +1106,70 @@ def delete_maintenance_log(ac_id: str, log_id: int, db: Session = Depends(get_db
     
     db.commit()
     return ac_to_dict(ac)
+
+
+# ==========================================
+# USER MANAGEMENT REST APIs (ADMIN ONLY)
+# ==========================================
+
+import uuid
+
+@app.post("/api/v1/admin/users")
+def api_create_user(data: UserCreate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    # Check if username already exists
+    exists = db.query(User).filter_by(username=data.username).first()
+    if exists:
+        raise HTTPException(status_code=400, detail="ชื่อผู้ใช้งานนี้มีอยู่ในระบบแล้ว")
+        
+    user = User(
+        id=str(uuid.uuid4()),
+        username=data.username,
+        hashed_password=hash_password(data.password),
+        role=data.role,
+        full_name=data.full_name
+    )
+    db.add(user)
+    db.commit()
+    return {"status": "success", "user_id": user.id}
+
+@app.delete("/api/v1/admin/users/{user_id}")
+def api_delete_user(user_id: str, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    if user_id == current_user.id:
+        raise HTTPException(status_code=400, detail="ไม่สามารถลบบัญชีของตัวเองได้")
+        
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้งานนี้")
+        
+    db.delete(user)
+    db.commit()
+    return {"status": "success"}
+
+@app.post("/api/v1/admin/users/{user_id}/assignments")
+def api_create_assignment(user_id: str, data: AssignmentCreate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้งานนี้")
+        
+    # Check if assignment already exists
+    exists = db.query(UserAssignment).filter_by(user_id=user_id, location_id=data.location_id).first()
+    if exists:
+        return {"status": "success", "message": "ได้รับสิทธิ์เข้าถึงสถานที่นี้อยู่แล้ว"}
+        
+    assignment = UserAssignment(
+        user_id=user_id,
+        location_id=data.location_id
+    )
+    db.add(assignment)
+    db.commit()
+    return {"status": "success"}
+
+@app.delete("/api/v1/admin/users/{user_id}/assignments/{loc_id}")
+def api_delete_assignment(user_id: str, loc_id: str, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    assignment = db.query(UserAssignment).filter_by(user_id=user_id, location_id=loc_id).first()
+    if not assignment:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการมอบหมายงานนี้")
+        
+    db.delete(assignment)
+    db.commit()
+    return {"status": "success"}

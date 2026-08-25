@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+<span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+<span class="font-medium text-slate-700">จัดการผู้ใช้งาน</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <div class="flex items-center justify-between gap-4 mb-8">
+    <div>
+      <h2 class="text-2xl font-bold text-slate-900">จัดการบัญชีผู้ใช้และสิทธิ์การเข้าถึง</h2>
+      <p class="text-sm text-slate-500 mt-1">เพิ่มลบบัญชีช่าง และมอบหมายงานสำหรับสถานที่ปฏิบัติงานต่างๆ</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <!-- Left Column: Add New User Form -->
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
+      <h3 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+        <i data-lucide="user-plus" class="w-5 h-5 text-brand-500"></i> เพิ่มผู้ใช้งานใหม่
+      </h3>
+      <form id="add-user-form" onsubmit="handleAddUser(event)" class="space-y-4">
+        <div>
+          <label for="new-username" class="block text-xs font-bold text-slate-500 uppercase mb-1">ชื่อผู้ใช้งาน (Username)</label>
+          <input type="text" id="new-username" required placeholder="เช่น technician1" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-brand-500 text-sm">
+        </div>
+        <div>
+          <label for="new-fullname" class="block text-xs font-bold text-slate-500 uppercase mb-1">ชื่อ-นามสกุล (Full Name)</label>
+          <input type="text" id="new-fullname" required placeholder="เช่น ช่างสมชาย มั่นคง" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-brand-500 text-sm">
+        </div>
+        <div>
+          <label for="new-password" class="block text-xs font-bold text-slate-500 uppercase mb-1">รหัสผ่าน (Password)</label>
+          <input type="password" id="new-password" required placeholder="รหัสผ่านขั้นต่ำ 4 ตัวอักษร" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-brand-500 text-sm">
+        </div>
+        <div>
+          <label for="new-role" class="block text-xs font-bold text-slate-500 uppercase mb-1">บทบาทการทำงาน (Role)</label>
+          <select id="new-role" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:border-brand-500 text-sm">
+            <option value="technician">ช่างเทคนิค (Technician)</option>
+            <option value="admin">ผู้ดูแลระบบ (Admin)</option>
+          </select>
+        </div>
+        <button type="submit" class="w-full py-2 bg-brand-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition shadow flex items-center justify-center gap-2">
+          <i data-lucide="check" class="w-4 h-4"></i> บันทึกข้อมูล
+        </button>
+      </form>
+    </div>
+
+    <!-- Right Column: Users List -->
+    <div class="lg:col-span-2 space-y-6">
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+        <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
+          <h3 class="font-bold text-slate-800">รายชื่อบัญชีผู้ใช้ทั้งหมด</h3>
+          <span class="text-xs bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full font-semibold">{{ users|length }} บัญชี</span>
+        </div>
+        <div class="divide-y divide-slate-100 max-h-[600px] overflow-y-auto">
+          {% for u in users %}
+          <div class="p-6 flex flex-col md:flex-row md:items-start justify-between gap-4">
+            <div class="space-y-3 flex-1">
+              <div class="flex items-center gap-2.5 flex-wrap">
+                <span class="font-bold text-slate-800 text-base">{{ u.full_name }}</span>
+                <span class="text-xs text-slate-400">(@{{ u.username }})</span>
+                {% if u.role == 'admin' %}
+                <span class="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 font-bold px-2 py-0.5 rounded-full">Admin</span>
+                {% else %}
+                <span class="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 font-bold px-2 py-0.5 rounded-full">Technician</span>
+                {% endif %}
+              </div>
+              
+              <!-- Assignments Section for Technicians -->
+              {% if u.role == 'technician' %}
+              <div class="space-y-2">
+                <span class="text-xs font-bold text-slate-500 uppercase block">สถานที่รับผิดชอบ:</span>
+                <div class="flex flex-wrap gap-1.5 items-center">
+                  {% if u.assignments %}
+                    {% for assign in u.assignments %}
+                    <span class="inline-flex items-center gap-1 text-xs bg-brand-50 border border-brand-100 text-brand-800 px-2.5 py-1 rounded-lg">
+                      {{ assign.location_name }}
+                      <button onclick="handleDeleteAssignment('{{ u.id }}', '{{ assign.location_id }}')" class="hover:text-red-600 focus:outline-none transition">
+                        <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                      </button>
+                    </span>
+                    {% endfor %}
+                  {% else %}
+                    <span class="text-xs text-amber-600 font-medium italic flex items-center gap-1">
+                      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> ยังไม่ได้รับมอบหมายสถานที่
+                    </span>
+                  {% endif %}
+                </div>
+
+                <!-- Add Assignment Dropdown form -->
+                <div class="flex items-center gap-2 mt-3 pt-2">
+                  <select id="assign-loc-{{ u.id }}" class="px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500">
+                    <option value="">-- เลือกสถานที่มอบหมาย --</option>
+                    {% for loc in locations %}
+                      <option value="{{ loc.id }}">{{ loc.name }}</option>
+                    {% endfor %}
+                  </select>
+                  <button onclick="handleAddAssignment('{{ u.id }}')" class="px-2.5 py-1 bg-brand-100 text-brand-800 hover:bg-brand-200 rounded text-xs font-bold transition flex items-center gap-1">
+                    <i data-lucide="plus" class="w-3.5 h-3.5"></i> มอบหมายงาน
+                  </button>
+                </div>
+              </div>
+              {% else %}
+              <p class="text-xs text-slate-400 italic">มีสิทธิ์เข้าถึงและจัดการสถานที่ทุกแห่งโดยสมบูรณ์</p>
+              {% endif %}
+            </div>
+
+            <!-- Delete User Button (Hidden/Disabled for self to prevent lock-out) -->
+            <div>
+              {% if u.id != current_user_id %}
+              <button onclick="handleDeleteUser('{{ u.id }}', '{{ u.full_name }}')" class="p-2 border border-slate-200 hover:border-red-200 hover:bg-red-50 text-slate-400 hover:text-red-600 rounded-lg transition duration-150">
+                <i data-lucide="trash-2" class="w-4 h-4"></i>
+              </button>
+              {% else %}
+              <span class="text-xs text-slate-400 italic px-2 py-1 bg-slate-100 rounded">บัญชีของคุณ</span>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // Save New User
+  async function handleAddUser(event) {
+    event.preventDefault();
+    const username = document.getElementById('new-username').value.trim();
+    const fullname = document.getElementById('new-fullname').value.trim();
+    const password = document.getElementById('new-password').value.trim();
+    const role = document.getElementById('new-role').value;
+
+    if (password.length < 4) {
+      alert("รหัสผ่านต้องมีความยาวอย่างน้อย 4 ตัวอักษร");
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/v1/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, full_name: fullname, password, role })
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert(err.detail || "เกิดข้อผิดพลาดในการสร้างผู้ใช้");
+      }
+    } catch (e) {
+      alert("เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
+    }
+  }
+
+  // Delete User
+  async function handleDeleteUser(userId, fullName) {
+    if (!confirm(`คุณแน่ใจหรือไม่ว่าต้องการลบบัญชีผู้ใช้ "${fullName}"?`)) return;
+
+    try {
+      const res = await fetch(`/api/v1/admin/users/${userId}`, { method: 'DELETE' });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert(err.detail || "เกิดข้อผิดพลาดในการลบผู้ใช้งาน");
+      }
+    } catch (e) {
+      alert("เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
+    }
+  }
+
+  // Add Location Assignment
+  async function handleAddAssignment(userId) {
+    const locSelect = document.getElementById(`assign-loc-${userId}`);
+    const locationId = locSelect.value;
+    if (!locationId) {
+      alert("กรุณาเลือกสถานที่ก่อนกดมอบหมายงาน");
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/v1/admin/users/${userId}/assignments`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ location_id: locationId })
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert(err.detail || "เกิดข้อผิดพลาดในการมอบหมายงาน");
+      }
+    } catch (e) {
+      alert("เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
+    }
+  }
+
+  // Remove Location Assignment
+  async function handleDeleteAssignment(userId, locationId) {
+    if (!confirm("คุณต้องการยกเลิกการมอบหมายสถานที่นี้ใช่หรือไม่?")) return;
+
+    try {
+      const res = await fetch(`/api/v1/admin/users/${userId}/assignments/${locationId}`, {
+        method: 'DELETE'
+      });
+
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert(err.detail || "เกิดข้อผิดพลาดในการลบสิทธิ์การเข้าถึง");
+      }
+    } catch (e) {
+      alert("เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
+    }
+  }
+</script>
+{% endblock %}

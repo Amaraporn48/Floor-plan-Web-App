@@ -5,3 +5,5 @@ sqlalchemy-libsql
 pydantic
 python-multipart
 uvicorn
+pyjwt
+bcrypt
