@@ -25,6 +25,43 @@
       </h3>
     </div>
 
+    <!-- Color Status Filters Legend -->
+    <div class="flex flex-wrap items-center gap-3 sm:gap-4 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg text-[11px] sm:text-xs font-bold text-slate-600 select-none shadow-sm">
+      <span class="flex items-center gap-1 text-slate-500 border-r border-slate-200 pr-2">
+        <i data-lucide="filter" class="w-3.5 h-3.5"></i> กรองสี
+      </span>
+      
+      <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+        <input type="checkbox" checked value="normal" onchange="onStatusFilterChange()" class="status-filter rounded text-emerald-500 focus:ring-emerald-400 w-3.5 h-3.5 border-slate-300">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span>
+        <span>ปกติ</span>
+      </label>
+
+      <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+        <input type="checkbox" checked value="check" onchange="onStatusFilterChange()" class="status-filter rounded text-amber-500 focus:ring-amber-400 w-3.5 h-3.5 border-slate-300">
+        <span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span>
+        <span>ตรวจสอบ</span>
+      </label>
+
+      <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+        <input type="checkbox" checked value="repair" onchange="onStatusFilterChange()" class="status-filter rounded text-orange-500 focus:ring-orange-400 w-3.5 h-3.5 border-slate-300">
+        <span class="w-2.5 h-2.5 rounded-full bg-orange-500"></span>
+        <span>รอซ่อม</span>
+      </label>
+
+      <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+        <input type="checkbox" checked value="broken" onchange="onStatusFilterChange()" class="status-filter rounded text-rose-500 focus:ring-rose-400 w-3.5 h-3.5 border-slate-300">
+        <span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span>
+        <span>ชำรุด</span>
+      </label>
+
+      <label class="flex items-center gap-1.5 cursor-pointer hover:text-slate-800 transition">
+        <input type="checkbox" checked value="inactive" onchange="onStatusFilterChange()" class="status-filter rounded text-slate-400 focus:ring-slate-400 w-3.5 h-3.5 border-slate-300">
+        <span class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+        <span>ไม่ใช้งาน</span>
+      </label>
+    </div>
+
     <div class="flex items-center gap-2">
       <!-- Edit Mode Indicators -->
       <div id="add-marker-tip" class="hidden text-xs text-brand-600 font-bold bg-brand-50 border border-brand-200 px-3 py-1.5 rounded-lg animate-pulse flex items-center gap-1">

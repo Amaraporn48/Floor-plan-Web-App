@@ -123,21 +123,26 @@ function renderSidebarACList() {
   const counter = document.getElementById('sidebar-ac-count');
   if (!container) return;
 
-  counter.textContent = `${state.acs.length} เครื่อง`;
+  const checkedFilters = Array.from(document.querySelectorAll('.status-filter:checked')).map(el => el.value);
+  const filteredAcs = state.acs.filter(ac => {
+    return checkedFilters.length === 0 || checkedFilters.includes(ac.status);
+  });
+
+  counter.textContent = `${filteredAcs.length} เครื่อง`;
   container.innerHTML = '';
 
-  if (state.acs.length === 0) {
+  if (filteredAcs.length === 0) {
     container.innerHTML = `
       <div class="text-center py-8 text-slate-400 text-xs">
         <i data-lucide="info" class="w-8 h-8 mx-auto mb-2 text-slate-300"></i>
-        <span>ยังไม่มีการมาร์คตำแหน่งแอร์ในชั้นนี้</span>
+        <span>ไม่พบรายการแอร์ตามสถานะที่กรอง</span>
       </div>
     `;
     lucide.createIcons();
     return;
   }
 
-  state.acs.forEach(ac => {
+  filteredAcs.forEach(ac => {
     const item = document.createElement('div');
     item.className = "flex items-center justify-between p-3.5 hover:bg-slate-50 cursor-pointer transition select-none text-xs border-l-4 " + 
       (ac.status === 'normal' ? 'border-emerald-500' :
@@ -195,7 +200,13 @@ function renderMarkers() {
   if (!container) return;
   container.innerHTML = '';
 
+  const checkedFilters = Array.from(document.querySelectorAll('.status-filter:checked')).map(el => el.value);
+
   state.acs.forEach(ac => {
+    if (checkedFilters.length > 0 && !checkedFilters.includes(ac.status)) {
+      return;
+    }
+
     const marker = document.createElement('div');
     marker.id = `marker-${ac.id}`;
     marker.className = `ac-marker marker-${ac.status} pointer-events-auto`;
@@ -1223,4 +1234,9 @@ function startEditFromModal(logId, note, status, technician) {
 
 function deleteFromModal(logId) {
   deleteMaintenanceLog(state.historyAC.id, logId);
+}
+
+function onStatusFilterChange() {
+  renderMarkers();
+  renderSidebarACList();
 }
