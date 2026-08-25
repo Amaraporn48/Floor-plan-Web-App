@@ -201,6 +201,11 @@ def seed_db(db: Session):
 # Initialize database tables on startup
 @app.on_event("startup")
 def on_startup():
+    # Skip DB initialization on Vercel production to optimize cold-start speed
+    if os.environ.get("TURSO_DATABASE_URL"):
+        print("Running in production mode (Turso Cloud DB). Skipping startup init/seeding.")
+        return
+
     try:
         init_db()
         db = SessionLocal()
@@ -414,13 +419,23 @@ def page_floors(request: Request, loc_id: str, bld_id: str, db: Session = Depend
         raise HTTPException(status_code=404, detail="สถานที่หรืออาคารไม่ถูกต้อง")
 
     floors = db.query(Floor).filter_by(location_id=loc_id, building_id=bld_id).all()
+    
+    # Optimize: Query AC counts for all floors in this building in a single database call
+    from sqlalchemy import func
+    ac_counts_raw = (
+        db.query(AirConditioner.floor_id, func.count(AirConditioner.id))
+        .filter_by(location_id=loc_id, building_id=bld_id)
+        .group_by(AirConditioner.floor_id)
+        .all()
+    )
+    ac_counts = {floor_id: count for floor_id, count in ac_counts_raw}
+
     floor_list = []
     for fl in floors:
-        ac_count = db.query(AirConditioner).filter_by(location_id=loc_id, building_id=bld_id, floor_id=fl.id).count()
         floor_list.append({
             "id": fl.id,
             "name": fl.name,
-            "ac_count": ac_count,
+            "ac_count": ac_counts.get(fl.id, 0),
             "has_blueprint": bool(fl.image_data)
         })
 
