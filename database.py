@@ -131,4 +131,12 @@ class MaintenanceLog(Base):
 
 # Create all database tables
 def init_db():
-    Base.metadata.create_all(bind=engine)
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        err_msg = str(e)
+        if "already exists" in err_msg:
+            print("Database tables already exist. Skipping creation.")
+        else:
+            raise e
+
