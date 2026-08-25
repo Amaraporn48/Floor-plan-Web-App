@@ -526,22 +526,38 @@ def handle_logout():
     response.delete_cookie("access_token")
     return response
 
-# Change Password Request Schema
-class ChangePasswordRequest(BaseModel):
+# Update Profile Request Schema
+class UpdateProfileRequest(BaseModel):
+    username: str
+    full_name: str
     old_password: str
-    new_password: str
+    new_password: Optional[str] = None
 
-# Change Password Endpoint
-@app.post("/api/v1/users/change-password")
-def change_user_password(data: ChangePasswordRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+# Update Profile Endpoint (Username, Full Name, and optional Password)
+@app.post("/api/v1/users/update-profile")
+def update_user_profile(data: UpdateProfileRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if not verify_password(data.old_password, current_user.hashed_password):
         raise HTTPException(status_code=400, detail="รหัสผ่านปัจจุบันไม่ถูกต้อง")
-    if len(data.new_password) < 6:
-        raise HTTPException(status_code=400, detail="รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร")
         
-    current_user.hashed_password = hash_password(data.new_password)
+    # Check username uniqueness if changing
+    new_username = data.username.strip()
+    if new_username != current_user.username:
+        exists = db.query(User).filter_by(username=new_username).first()
+        if exists:
+            raise HTTPException(status_code=400, detail="ชื่อผู้ใช้งานนี้ถูกใช้งานไปแล้ว")
+        current_user.username = new_username
+        
+    current_user.full_name = data.full_name.strip()
+    
+    # Optional password update
+    if data.new_password:
+        new_pwd = data.new_password.strip()
+        if len(new_pwd) < 6:
+            raise HTTPException(status_code=400, detail="รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร")
+        current_user.hashed_password = hash_password(new_pwd)
+        
     db.commit()
-    return {"status": "success", "message": "เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว"}
+    return {"status": "success", "message": "อัปเดตข้อมูลส่วนตัวสำเร็จเรียบร้อยแล้ว"}
 
 # User Administration Panel (Admin Only)
 @app.get("/admin/users", response_class=HTMLResponse)

@@ -86,9 +86,9 @@
               <span class="text-xs font-bold text-slate-100">{{ current_user.full_name }}</span>
               <span class="text-[9px] text-slate-400 uppercase font-bold">{{ current_user.role }}</span>
             </div>
-            <!-- Change Password Button (Key Icon) -->
-            <button onclick="openChangePasswordModal()" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition duration-150" title="เปลี่ยนรหัสผ่าน">
-              <i data-lucide="key" class="w-4 h-4"></i>
+            <!-- Edit Profile Button (User Cog Icon) -->
+            <button onclick="openProfileModal()" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition duration-150" title="แก้ไขข้อมูลส่วนตัว / เปลี่ยนรหัสผ่าน">
+              <i data-lucide="user-cog" class="w-4 h-4"></i>
             </button>
             <a href="/logout" class="p-1.5 hover:bg-slate-800 rounded-lg text-slate-400 hover:text-white transition duration-150" title="ออกจากระบบ">
               <i data-lucide="log-out" class="w-4 h-4"></i>
@@ -213,41 +213,56 @@
     });
   </script>
 
-  <!-- Change Password Modal -->
+  <!-- Edit Profile & Password Modal -->
   {% if current_user %}
-  <div id="change-password-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden" role="dialog" aria-modal="true">
-    <div onclick="closeChangePasswordModal()" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+  <div id="profile-modal" class="fixed inset-0 z-[100] flex items-center justify-center hidden" role="dialog" aria-modal="true">
+    <div onclick="closeProfileModal()" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
     
     <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 overflow-hidden z-10 flex flex-col">
       <div class="p-5 bg-brand-900 text-white flex justify-between items-center">
         <h3 class="text-sm font-black flex items-center gap-1.5">
-          <i data-lucide="key" class="w-4 h-4 text-white"></i> เปลี่ยนรหัสผ่านใหม่
+          <i data-lucide="user-cog" class="w-4 h-4 text-white"></i> แก้ไขข้อมูลส่วนตัว
         </h3>
-        <button onclick="closeChangePasswordModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
+        <button onclick="closeProfileModal()" class="text-slate-400 hover:text-white"><i data-lucide="x" class="w-5 h-5"></i></button>
       </div>
 
-      <form id="change-password-form" onsubmit="handleChangePassword(event)" class="p-6 space-y-4">
+      <form id="profile-form" onsubmit="handleUpdateProfile(event)" class="p-6 space-y-4">
         <div>
-          <label for="change-pwd-old" class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่านปัจจุบัน <span class="text-rose-500">*</span></label>
-          <input type="password" id="change-pwd-old" required placeholder="กรอกรหัสผ่านปัจจุบันของคุณ" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm bg-white">
+          <label for="profile-username" class="block text-xs font-bold text-slate-700 mb-1">ชื่อผู้ใช้งาน (Username) <span class="text-rose-500">*</span></label>
+          <input type="text" id="profile-username" required placeholder="ชื่อผู้ใช้สำหรับล็อกอิน" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm bg-white font-mono">
         </div>
 
         <div>
-          <label for="change-pwd-new" class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่านใหม่ <span class="text-rose-500">*</span></label>
-          <input type="password" id="change-pwd-new" required placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm bg-white">
+          <label for="profile-fullname" class="block text-xs font-bold text-slate-700 mb-1">ชื่อ-นามสกุล (Full Name) <span class="text-rose-500">*</span></label>
+          <input type="text" id="profile-fullname" required placeholder="ชื่อแสดงในระบบบันทึกซ่อม" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm bg-white">
         </div>
 
-        <div>
-          <label for="change-pwd-confirm" class="block text-xs font-bold text-slate-700 mb-1">ยืนยันรหัสผ่านใหม่ <span class="text-rose-500">*</span></label>
-          <input type="password" id="change-pwd-confirm" required placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm bg-white">
+        <div class="border-t border-slate-100 pt-3">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-2">เปลี่ยนรหัสผ่าน (ระบุเมื่อต้องการเปลี่ยนเท่านั้น)</span>
+          
+          <div class="space-y-3">
+            <div>
+              <label for="profile-new-pwd" class="block text-xs font-bold text-slate-700 mb-1">รหัสผ่านใหม่</label>
+              <input type="password" id="profile-new-pwd" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัวอักษร)" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm bg-white">
+            </div>
+            <div>
+              <label for="profile-confirm-pwd" class="block text-xs font-bold text-slate-700 mb-1">ยืนยันรหัสผ่านใหม่</label>
+              <input type="password" id="profile-confirm-pwd" placeholder="กรอกรหัสผ่านใหม่อีกครั้ง" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm bg-white">
+            </div>
+          </div>
         </div>
 
-        <div class="pt-3 flex justify-end gap-2">
-          <button type="button" onclick="closeChangePasswordModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded hover:bg-slate-100 text-xs font-medium transition">
+        <div class="border-t border-slate-100 pt-3">
+          <label for="profile-old-pwd" class="block text-xs font-bold text-slate-700 mb-1">ยืนยันรหัสผ่านปัจจุบันเพื่อบันทึก <span class="text-rose-500">*</span></label>
+          <input type="password" id="profile-old-pwd" required placeholder="กรอกรหัสผ่านปัจจุบันเพื่อเซฟ" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm bg-white">
+        </div>
+
+        <div class="pt-2 flex justify-end gap-2">
+          <button type="button" onclick="closeProfileModal()" class="px-4 py-2 border border-slate-300 text-slate-700 rounded hover:bg-slate-100 text-xs font-medium transition">
             ยกเลิก
           </button>
           <button type="submit" class="px-4 py-2 bg-brand-800 hover:bg-slate-800 text-white rounded text-xs font-bold shadow transition flex items-center gap-1">
-            <i data-lucide="check" class="w-3.5 h-3.5"></i> อัปเดตรหัสผ่าน
+            <i data-lucide="check" class="w-3.5 h-3.5"></i> บันทึกการแก้ไข
           </button>
         </div>
       </form>
@@ -255,44 +270,63 @@
   </div>
 
   <script>
-    function openChangePasswordModal() {
-      document.getElementById('change-pwd-old').value = '';
-      document.getElementById('change-pwd-new').value = '';
-      document.getElementById('change-pwd-confirm').value = '';
-      document.getElementById('change-password-modal').classList.remove('hidden');
+    function openProfileModal() {
+      document.getElementById('profile-username').value = "{{ current_user.username }}";
+      document.getElementById('profile-fullname').value = "{{ current_user.full_name }}";
+      document.getElementById('profile-old-pwd').value = '';
+      document.getElementById('profile-new-pwd').value = '';
+      document.getElementById('profile-confirm-pwd').value = '';
+      document.getElementById('profile-modal').classList.remove('hidden');
+      if (window.lucide) {
+        lucide.createIcons();
+      }
     }
 
-    function closeChangePasswordModal() {
-      document.getElementById('change-password-modal').classList.add('hidden');
+    function closeProfileModal() {
+      document.getElementById('profile-modal').classList.add('hidden');
     }
 
-    async function handleChangePassword(e) {
+    async function handleUpdateProfile(e) {
       e.preventDefault();
-      const oldPassword = document.getElementById('change-pwd-old').value;
-      const newPassword = document.getElementById('change-pwd-new').value;
-      const confirmPassword = document.getElementById('change-pwd-confirm').value;
+      const username = document.getElementById('profile-username').value.trim();
+      const fullname = document.getElementById('profile-fullname').value.trim();
+      const oldPassword = document.getElementById('profile-old-pwd').value;
+      const newPassword = document.getElementById('profile-new-pwd').value;
+      const confirmPassword = document.getElementById('profile-confirm-pwd').value;
 
-      if (newPassword.length < 6) {
-        return alert("รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+      if (!username || !fullname) {
+        return alert("กรุณากรอกข้อมูลที่จำเป็นให้ครบถ้วน");
       }
 
-      if (newPassword !== confirmPassword) {
-        return alert("รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน");
+      const payload = {
+        username: username,
+        full_name: fullname,
+        old_password: oldPassword
+      };
+
+      if (newPassword) {
+        if (newPassword.length < 6) {
+          return alert("รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร");
+        }
+        if (newPassword !== confirmPassword) {
+          return alert("รหัสผ่านใหม่และการยืนยันรหัสผ่านไม่ตรงกัน");
+        }
+        payload.new_password = newPassword;
       }
 
       try {
-        const res = await fetch('/api/v1/users/change-password', {
+        const res = await fetch('/api/v1/users/update-profile', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ old_password: oldPassword, new_password: newPassword })
+          body: JSON.stringify(payload)
         });
 
         if (res.ok) {
-          alert("เปลี่ยนรหัสผ่านสำเร็จเรียบร้อยแล้ว!");
-          closeChangePasswordModal();
+          alert("อัปเดตข้อมูลส่วนตัวสำเร็จเรียบร้อยแล้ว! หน้าเว็บจะโหลดใหม่เพื่อแสดงชื่อล่าสุด");
+          window.location.reload();
         } else {
           const err = await res.json();
-          alert("เปลี่ยนรหัสผ่านล้มเหลว: " + (err.detail || 'รหัสผ่านปัจจุบันไม่ถูกต้อง'));
+          alert("บันทึกการแก้ไขล้มเหลว: " + (err.detail || 'รหัสผ่านปัจจุบันไม่ถูกต้อง'));
         }
       } catch (err) {
         alert("เชื่อมต่อเซิร์ฟเวอร์ขัดข้อง");
