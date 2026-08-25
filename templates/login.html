@@ -57,7 +57,12 @@
         </div>
         <div>
           <label for="password" class="block text-xs font-bold text-slate-800 mb-1">รหัสผ่าน (Password)</label>
-          <input id="password" name="password" type="password" required class="appearance-none rounded-xl block w-full px-4 py-2.5 bg-white border-0 shadow-inner text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="กรอกรหัสผ่าน">
+          <div class="relative flex items-center">
+            <input id="password" name="password" type="password" required class="appearance-none rounded-xl block w-full pl-4 pr-10 py-2.5 bg-white border-0 shadow-inner text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm" placeholder="กรอกรหัสผ่าน">
+            <button type="button" onclick="togglePasswordVisibility('password', 'eye-icon-login')" class="absolute right-3 text-slate-400 hover:text-slate-600 focus:outline-none">
+              <i id="eye-icon-login" data-lucide="eye" class="w-4.5 h-4.5"></i>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -68,5 +73,27 @@
       </div>
     </form>
   </div>
+
+  <!-- Lucide Icons CDN -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script>
+    // Initialize Lucide Icons
+    lucide.createIcons();
+
+    // Toggle password visibility
+    function togglePasswordVisibility(inputId, iconId) {
+      const input = document.getElementById(inputId);
+      const icon = document.getElementById(iconId);
+      
+      if (input.type === "password") {
+        input.type = "text";
+        icon.setAttribute("data-lucide", "eye-off");
+      } else {
+        input.type = "password";
+        icon.setAttribute("data-lucide", "eye");
+      }
+      lucide.createIcons();
+    }
+  </script>
 </body>
 </html>
