@@ -418,7 +418,12 @@ def page_floors(request: Request, loc_id: str, bld_id: str, db: Session = Depend
     if not loc or not bld:
         raise HTTPException(status_code=404, detail="สถานที่หรืออาคารไม่ถูกต้อง")
 
-    floors = db.query(Floor).filter_by(location_id=loc_id, building_id=bld_id).all()
+    # Optimize: Query only ID and name, and check image_data existence without transferring it over the network
+    floors = (
+        db.query(Floor.id, Floor.name, (Floor.image_data != None).label("has_blueprint"))
+        .filter_by(location_id=loc_id, building_id=bld_id)
+        .all()
+    )
     
     # Optimize: Query AC counts for all floors in this building in a single database call
     from sqlalchemy import func
@@ -436,7 +441,7 @@ def page_floors(request: Request, loc_id: str, bld_id: str, db: Session = Depend
             "id": fl.id,
             "name": fl.name,
             "ac_count": ac_counts.get(fl.id, 0),
-            "has_blueprint": bool(fl.image_data)
+            "has_blueprint": fl.has_blueprint
         })
 
     return templates.TemplateResponse(request, "floors.html", {
