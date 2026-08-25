@@ -17,10 +17,10 @@ from database import (
 # Initialize FastAPI App
 app = FastAPI(title="TECHNICAL WATER - AC Management System")
 
-# Mount Static Files and Templates
-os.makedirs("static", exist_ok=True)
-app.mount("/static", StaticFiles(directory="static"), name="static")
-templates = Jinja2Templates(directory="templates")
+# Mount Static Files and Templates using absolute paths
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
+templates = Jinja2Templates(directory=os.path.join(BASE_DIR, "templates"))
 
 def get_floor_abbreviation(floor_name: str) -> str:
     name = floor_name.strip().lower()
