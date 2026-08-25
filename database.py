@@ -165,6 +165,49 @@ def init_db():
                 print("Dropped old user_assignments table.")
                 
         Base.metadata.create_all(bind=engine)
+        
+        # Auto-migrate old floor_ids (e.g. 'floor-1') to new unique format ('loc-1_bld-a_floor-1')
+        db = SessionLocal()
+        try:
+            # First, check if there are floors to migrate
+            old_floors = db.query(Floor).all()
+            updated = False
+            for flr in old_floors:
+                correct_prefix = f"{flr.location_id}_{flr.building_id}_"
+                if not flr.id.startswith(correct_prefix):
+                    raw_id = flr.id.split("_")[-1]
+                    new_id = f"{correct_prefix}{raw_id}"
+                    print(f"Migrating floor ID from {flr.id} to {new_id}...")
+                    
+                    # Update referenced ACs
+                    db.query(AirConditioner).filter_by(floor_id=flr.id).update({"floor_id": new_id})
+                    # Update referenced assignments
+                    db.query(UserAssignment).filter_by(floor_id=flr.id).update({"floor_id": new_id})
+                    
+                    # Update the Floor primary key
+                    db.execute(text("UPDATE floors SET id = :new_id WHERE id = :old_id"), {"new_id": new_id, "old_id": flr.id})
+                    updated = True
+            
+            # Second, migrate any ACs that might have been synced with old floor_id format but whose Floor already has the correct ID format
+            old_acs = db.query(AirConditioner).all()
+            for ac in old_acs:
+                correct_prefix = f"{ac.location_id}_{ac.building_id}_"
+                if not ac.floor_id.startswith(correct_prefix):
+                    raw_id = ac.floor_id.split("_")[-1]
+                    new_id = f"{correct_prefix}{raw_id}"
+                    print(f"Migrating AC {ac.id} floor_id from {ac.floor_id} to {new_id}...")
+                    ac.floor_id = new_id
+                    updated = True
+                    
+            if updated:
+                db.commit()
+                print("Database ID migration complete!")
+        except Exception as migrate_err:
+            print(f"Database ID migration skipped/failed: {migrate_err}")
+            db.rollback()
+        finally:
+            db.close()
+
     except Exception as e:
         err_msg = str(e)
         if "already exists" in err_msg:
