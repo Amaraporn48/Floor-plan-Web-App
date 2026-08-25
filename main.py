@@ -385,6 +385,9 @@ class UserCreate(BaseModel):
 class AssignmentCreate(BaseModel):
     floor_id: str
 
+class BulkAssignmentCreate(BaseModel):
+    floor_ids: List[str]
+
 class LocationCreate(BaseModel):
     id: str
     name: str
@@ -1216,6 +1219,26 @@ def api_create_assignment(user_id: str, data: AssignmentCreate, current_user: Us
     db.add(assignment)
     db.commit()
     return {"status": "success"}
+
+@app.post("/api/v1/admin/users/{user_id}/assignments/bulk")
+def api_create_assignments_bulk(user_id: str, data: BulkAssignmentCreate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้งานนี้")
+        
+    added_count = 0
+    for f_id in data.floor_ids:
+        exists = db.query(UserAssignment).filter_by(user_id=user_id, floor_id=f_id).first()
+        if not exists:
+            assignment = UserAssignment(
+                user_id=user_id,
+                floor_id=f_id
+            )
+            db.add(assignment)
+            added_count += 1
+            
+    db.commit()
+    return {"status": "success", "added_count": added_count}
 
 @app.delete("/api/v1/admin/users/{user_id}/assignments/{floor_id}")
 def api_delete_assignment(user_id: str, floor_id: str, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):

@@ -112,14 +112,21 @@
                     <option value="">-- เลือกอาคาร --</option>
                   </select>
 
-                  <!-- Floor Dropdown -->
-                  <select id="assign-flr-{{ u.id }}" disabled class="px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500 bg-white disabled:opacity-50">
-                    <option value="">-- เลือกชั้น --</option>
-                  </select>
-
-                  <button onclick="handleAddAssignment('{{ u.id }}')" class="px-2.5 py-1 bg-brand-100 text-brand-800 hover:bg-brand-200 rounded text-xs font-bold transition flex items-center gap-1">
+                  <button onclick="handleAddAssignment('{{ u.id }}')" class="px-3 py-1 bg-brand-800 hover:bg-slate-700 text-white rounded text-xs font-bold transition flex items-center gap-1">
                     <i data-lucide="plus" class="w-3.5 h-3.5"></i> มอบหมายงาน
                   </button>
+                </div>
+
+                <!-- Floors Checkbox Wrapper -->
+                <div id="assign-flrs-wrapper-{{ u.id }}" class="hidden mt-3 p-3.5 bg-slate-50 border border-slate-200/80 rounded-xl w-full max-w-xl">
+                  <span class="block text-xs font-bold text-slate-500 uppercase mb-2">เลือกชั้นที่ต้องการมอบหมาย:</span>
+                  <div class="flex items-center gap-2 mb-2 pb-1.5 border-b border-slate-200">
+                    <input type="checkbox" id="select-all-{{ u.id }}" onchange="toggleSelectAllFloors('{{ u.id }}')" class="rounded border-slate-300 text-brand-600 focus:ring-brand-500 w-4 h-4 cursor-pointer">
+                    <label for="select-all-{{ u.id }}" class="text-xs font-bold text-slate-700 cursor-pointer select-none">เลือกทั้งหมด (Select All)</label>
+                  </div>
+                  <div id="assign-flrs-list-{{ u.id }}" class="grid grid-cols-2 sm:grid-cols-3 gap-2.5 max-h-40 overflow-y-auto">
+                    <!-- Checkboxes will be injected dynamically -->
+                  </div>
                 </div>
               </div>
               {% else %}
@@ -178,13 +185,12 @@
   function updateBuildingDropdown(userId) {
     const locId = document.getElementById(`assign-loc-${userId}`).value;
     const bldSelect = document.getElementById(`assign-bld-${userId}`);
-    const flrSelect = document.getElementById(`assign-flr-${userId}`);
+    const wrapper = document.getElementById(`assign-flrs-wrapper-${userId}`);
 
     // Reset dropdowns
     bldSelect.innerHTML = '<option value="">-- เลือกอาคาร --</option>';
     bldSelect.disabled = true;
-    flrSelect.innerHTML = '<option value="">-- เลือกชั้น --</option>';
-    flrSelect.disabled = true;
+    wrapper.classList.add('hidden');
 
     if (!locId) return;
 
@@ -200,15 +206,18 @@
     }
   }
 
-  // Update Floor dropdown options when Building is selected
+  // Update Floor checkboxes when Building is selected
   function updateFloorDropdown(userId) {
     const locId = document.getElementById(`assign-loc-${userId}`).value;
     const bldId = document.getElementById(`assign-bld-${userId}`).value;
-    const flrSelect = document.getElementById(`assign-flr-${userId}`);
+    const wrapper = document.getElementById(`assign-flrs-wrapper-${userId}`);
+    const container = document.getElementById(`assign-flrs-list-${userId}`);
+    const selectAll = document.getElementById(`select-all-${userId}`);
 
-    // Reset floor dropdown
-    flrSelect.innerHTML = '<option value="">-- เลือกชั้น --</option>';
-    flrSelect.disabled = true;
+    // Reset floor checklist
+    container.innerHTML = '';
+    selectAll.checked = false;
+    wrapper.classList.add('hidden');
 
     if (!locId || !bldId) return;
 
@@ -217,14 +226,26 @@
       const bld = loc.buildings.find(b => b.id === bldId);
       if (bld && bld.floors.length > 0) {
         bld.floors.forEach(flr => {
-          const opt = document.createElement("option");
-          opt.value = flr.id;
-          opt.textContent = flr.name;
-          flrSelect.appendChild(opt);
+          const div = document.createElement("div");
+          div.className = "flex items-center gap-2 bg-white px-3 py-2 rounded-lg border border-slate-200 shadow-sm hover:border-brand-300 transition duration-150";
+          div.innerHTML = `
+            <input type="checkbox" id="chk-${userId}-${flr.id}" value="${flr.id}" class="floor-chk-${userId} w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 cursor-pointer">
+            <label for="chk-${userId}-${flr.id}" class="text-xs font-semibold text-slate-700 cursor-pointer select-none truncate flex-1">${flr.name}</label>
+          `;
+          container.appendChild(div);
         });
-        flrSelect.disabled = false;
+        wrapper.classList.remove('hidden');
       }
     }
+  }
+
+  // Toggle all checkboxes in the floor checklist
+  function toggleSelectAllFloors(userId) {
+    const isChecked = document.getElementById(`select-all-${userId}`).checked;
+    const checkboxes = document.querySelectorAll(`.floor-chk-${userId}`);
+    checkboxes.forEach(cb => {
+      cb.checked = isChecked;
+    });
   }
 
   // Toggle password visibility
@@ -290,20 +311,23 @@
     }
   }
 
-  // Add Floor Assignment
+  // Add Floor Assignments (Bulk)
   async function handleAddAssignment(userId) {
-    const flrSelect = document.getElementById(`assign-flr-${userId}`);
-    const floorId = flrSelect.value;
-    if (!floorId) {
-      alert("กรุณาเลือกชั้นก่อนกดมอบหมายงาน");
+    const checkboxes = document.querySelectorAll(`.floor-chk-${userId}`);
+    const checkedFloorIds = Array.from(checkboxes)
+      .filter(cb => cb.checked)
+      .map(cb => cb.value);
+
+    if (checkedFloorIds.length === 0) {
+      alert("กรุณาเลือกชั้นที่ต้องการมอบหมายงานอย่างน้อย 1 ชั้น");
       return;
     }
 
     try {
-      const res = await fetch(`/api/v1/admin/users/${userId}/assignments`, {
+      const res = await fetch(`/api/v1/admin/users/${userId}/assignments/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ floor_id: floorId })
+        body: JSON.stringify({ floor_ids: checkedFloorIds })
       });
 
       if (res.ok) {
