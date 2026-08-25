@@ -1,5 +1,5 @@
 import os
-from sqlalchemy import create_engine, Column, String, Float, Integer, ForeignKey, Text, event
+from sqlalchemy import create_engine, Column, String, Float, Integer, ForeignKey, Text, event, text
 from sqlalchemy.orm import declarative_base, sessionmaker, relationship
 
 TURSO_DATABASE_URL = os.environ.get("TURSO_DATABASE_URL")
@@ -57,11 +57,11 @@ class UserAssignment(Base):
     __tablename__ = "user_assignments"
     id = Column(Integer, primary_key=True, autoincrement=True)
     user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
-    location_id = Column(String, ForeignKey("locations.id", ondelete="CASCADE"), nullable=False)
+    floor_id = Column(String, ForeignKey("floors.id", ondelete="CASCADE"), nullable=False)
     
     # Relationships
     user = relationship("User", back_populates="assignments")
-    location = relationship("Location")
+    floor = relationship("Floor")
 
 class Location(Base):
     __tablename__ = "locations"
@@ -153,6 +153,17 @@ class MaintenanceLog(Base):
 # Create all database tables
 def init_db():
     try:
+        # Check if old table with location_id exists and drop it to migrate to floor_id
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        if "user_assignments" in inspector.get_table_names():
+            columns = [c["name"] for c in inspector.get_columns("user_assignments")]
+            if "location_id" in columns:
+                print("Old user_assignments table found (with location_id). Dropping for migration...")
+                with engine.begin() as conn:
+                    conn.execute(text("DROP TABLE user_assignments"))
+                print("Dropped old user_assignments table.")
+                
         Base.metadata.create_all(bind=engine)
     except Exception as e:
         err_msg = str(e)

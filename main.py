@@ -331,8 +331,10 @@ def get_user_locations_query(user: User, db: Session):
     else:
         return (
             db.query(Location)
-            .join(UserAssignment, UserAssignment.location_id == Location.id)
+            .join(Floor, Floor.location_id == Location.id)
+            .join(UserAssignment, UserAssignment.floor_id == Floor.id)
             .filter(UserAssignment.user_id == user.id)
+            .distinct()
         )
 
 def check_location_access(user: User, location_id: str, db: Session):
@@ -340,7 +342,8 @@ def check_location_access(user: User, location_id: str, db: Session):
         return True
     assignment = (
         db.query(UserAssignment)
-        .filter_by(user_id=user.id, location_id=location_id)
+        .join(Floor, Floor.id == UserAssignment.floor_id)
+        .filter(UserAssignment.user_id == user.id, Floor.location_id == location_id)
         .first()
     )
     if not assignment:
@@ -349,6 +352,22 @@ def check_location_access(user: User, location_id: str, db: Session):
             detail="คุณไม่มีสิทธิ์เข้าถึงสถานที่นี้"
         )
     return True
+
+def check_floor_access(user: User, floor_id: str, db: Session):
+    if user.role == "admin":
+        return True
+    assignment = (
+        db.query(UserAssignment)
+        .filter_by(user_id=user.id, floor_id=floor_id)
+        .first()
+    )
+    if not assignment:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="คุณไม่มีสิทธิ์เข้าถึงชั้นข้อมูลนี้"
+        )
+    return True
+
 
 
 
@@ -364,7 +383,7 @@ class UserCreate(BaseModel):
     role: str
 
 class AssignmentCreate(BaseModel):
-    location_id: str
+    floor_id: str
 
 class LocationCreate(BaseModel):
     id: str
@@ -515,11 +534,15 @@ def page_admin_users(request: Request, current_user: User = Depends(get_current_
     for u in users:
         assignments = []
         for assign in u.assignments:
-            loc = db.query(Location).filter_by(id=assign.location_id).first()
-            if loc:
+            flr = db.query(Floor).filter_by(id=assign.floor_id).first()
+            if flr:
+                bld = db.query(Building).filter_by(id=flr.building_id).first()
+                loc = db.query(Location).filter_by(id=flr.location_id).first()
                 assignments.append({
-                    "location_id": assign.location_id,
-                    "location_name": loc.name
+                    "floor_id": assign.floor_id,
+                    "floor_name": flr.name,
+                    "building_name": bld.name if bld else "ไม่พบอาคาร",
+                    "location_name": loc.name if loc else "ไม่พบสถานที่"
                 })
         user_list.append({
             "id": u.id,
@@ -626,11 +649,13 @@ def page_floors(request: Request, loc_id: str, bld_id: str, current_user: User =
         raise HTTPException(status_code=404, detail="สถานที่หรืออาคารไม่ถูกต้อง")
 
     # Optimize: Query only ID and name, and check image_data existence without transferring it over the network
-    floors = (
+    query = (
         db.query(Floor.id, Floor.name, (Floor.image_data != None).label("has_blueprint"))
         .filter_by(location_id=loc_id, building_id=bld_id)
-        .all()
     )
+    if current_user.role != "admin":
+        query = query.join(UserAssignment, UserAssignment.floor_id == Floor.id).filter(UserAssignment.user_id == current_user.id)
+    floors = query.all()
     
     # Optimize: Query AC counts for all floors in this building in a single database call
     from sqlalchemy import func
@@ -674,6 +699,9 @@ def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, high
     
     if not loc or not bld or not flr:
         raise HTTPException(status_code=404, detail="แผนผังชั้นที่ระบุไม่ถูกต้อง")
+
+    # Enforce floor-level security guard!
+    check_floor_access(current_user, flr.id, db)
 
     # Query and serialize AC units for this floor to render instantly on load
     acs = db.query(AirConditioner).filter_by(location_id=loc_id, building_id=bld_id, floor_id=flr.id).all()
@@ -791,30 +819,53 @@ def api_sync_data(payload: SyncPayload, db: Session = Depends(get_db)):
 
 # Locations CRUD APIs
 @app.get("/api/v1/locations")
-def get_locations(db: Session = Depends(get_db)):
-    return [
-        {
-            "id": l.id,
-            "name": l.name,
-            "buildings": [
-                {
-                    "id": b.id,
-                    "name": b.name,
-                    "floors": [{"id": f.id, "name": f.name} for f in b.floors]
-                } for b in l.buildings
-            ]
-        } for l in db.query(Location).all()
-    ]
+def get_locations(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    locations = get_user_locations_query(current_user, db).all()
+    
+    if current_user.role == "admin":
+        return [
+            {
+                "id": l.id,
+                "name": l.name,
+                "buildings": [
+                    {
+                        "id": b.id,
+                        "name": b.name,
+                        "floors": [{"id": f.id, "name": f.name} for f in b.floors]
+                    } for b in l.buildings
+                ]
+            } for l in locations
+        ]
+    else:
+        assigned_floor_ids = {assign.floor_id for assign in current_user.assignments}
+        res = []
+        for l in locations:
+            bld_list = []
+            for b in l.buildings:
+                fl_list = [{"id": f.id, "name": f.name} for f in b.floors if f.id in assigned_floor_ids]
+                if fl_list:
+                    bld_list.append({
+                        "id": b.id,
+                        "name": b.name,
+                        "floors": fl_list
+                    })
+            if bld_list:
+                res.append({
+                    "id": l.id,
+                    "name": l.name,
+                    "buildings": bld_list
+                })
+        return res
 
 @app.post("/api/v1/locations")
-def create_location(data: LocationCreate, db: Session = Depends(get_db)):
+def create_location(data: LocationCreate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     loc = Location(id=data.id, name=data.name)
     db.add(loc)
     db.commit()
     return {"id": loc.id, "name": loc.name}
 
 @app.put("/api/v1/locations/{loc_id}")
-def update_location(loc_id: str, data: LocationUpdate, db: Session = Depends(get_db)):
+def update_location(loc_id: str, data: LocationUpdate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     loc = db.query(Location).filter_by(id=loc_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="Location not found")
@@ -823,7 +874,7 @@ def update_location(loc_id: str, data: LocationUpdate, db: Session = Depends(get
     return {"id": loc.id, "name": loc.name}
 
 @app.delete("/api/v1/locations/{loc_id}")
-def delete_location(loc_id: str, db: Session = Depends(get_db)):
+def delete_location(loc_id: str, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     loc = db.query(Location).filter_by(id=loc_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="Location not found")
@@ -833,14 +884,14 @@ def delete_location(loc_id: str, db: Session = Depends(get_db)):
 
 # Buildings CRUD APIs
 @app.post("/api/v1/locations/{loc_id}/buildings")
-def create_building(loc_id: str, data: BuildingCreate, db: Session = Depends(get_db)):
+def create_building(loc_id: str, data: BuildingCreate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     bld = Building(id=data.id, name=data.name, location_id=loc_id)
     db.add(bld)
     db.commit()
     return {"id": bld.id, "name": bld.name}
 
 @app.put("/api/v1/locations/{loc_id}/buildings/{bld_id}")
-def update_building(loc_id: str, bld_id: str, data: BuildingUpdate, db: Session = Depends(get_db)):
+def update_building(loc_id: str, bld_id: str, data: BuildingUpdate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     bld = db.query(Building).filter_by(id=bld_id, location_id=loc_id).first()
     if not bld:
         raise HTTPException(status_code=404, detail="Building not found")
@@ -849,7 +900,7 @@ def update_building(loc_id: str, bld_id: str, data: BuildingUpdate, db: Session 
     return {"id": bld.id, "name": bld.name}
 
 @app.delete("/api/v1/locations/{loc_id}/buildings/{bld_id}")
-def delete_building(loc_id: str, bld_id: str, db: Session = Depends(get_db)):
+def delete_building(loc_id: str, bld_id: str, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     bld = db.query(Building).filter_by(id=bld_id, location_id=loc_id).first()
     if not bld:
         raise HTTPException(status_code=404, detail="Building not found")
@@ -859,7 +910,7 @@ def delete_building(loc_id: str, bld_id: str, db: Session = Depends(get_db)):
 
 # Floors CRUD APIs
 @app.post("/api/v1/locations/{loc_id}/buildings/{bld_id}/floors")
-def create_floor(loc_id: str, bld_id: str, data: FloorCreate, db: Session = Depends(get_db)):
+def create_floor(loc_id: str, bld_id: str, data: FloorCreate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     flr = Floor(
         id=data.id, 
         name=data.name, 
@@ -872,7 +923,7 @@ def create_floor(loc_id: str, bld_id: str, data: FloorCreate, db: Session = Depe
     return {"id": flr.id, "name": flr.name}
 
 @app.put("/api/v1/locations/{loc_id}/buildings/{bld_id}/floors/{flr_id}")
-def update_floor(loc_id: str, bld_id: str, flr_id: str, data: FloorUpdate, db: Session = Depends(get_db)):
+def update_floor(loc_id: str, bld_id: str, flr_id: str, data: FloorUpdate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     flr = db.query(Floor).filter_by(id=flr_id, building_id=bld_id, location_id=loc_id).first()
     if not flr:
         raise HTTPException(status_code=404, detail="Floor not found")
@@ -884,7 +935,7 @@ def update_floor(loc_id: str, bld_id: str, flr_id: str, data: FloorUpdate, db: S
     return {"id": flr.id, "name": flr.name}
 
 @app.delete("/api/v1/locations/{loc_id}/buildings/{bld_id}/floors/{flr_id}")
-def delete_floor(loc_id: str, bld_id: str, flr_id: str, db: Session = Depends(get_db)):
+def delete_floor(loc_id: str, bld_id: str, flr_id: str, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
     flr = db.query(Floor).filter_by(id=flr_id, building_id=bld_id, location_id=loc_id).first()
     if not flr:
         raise HTTPException(status_code=404, detail="Floor not found")
@@ -898,21 +949,23 @@ def get_acs(locationId: Optional[str] = None, buildingId: Optional[str] = None, 
     query = db.query(AirConditioner)
     
     if current_user.role != "admin":
-        assigned_ids = [assign.location_id for assign in current_user.assignments]
-        if locationId:
-            if locationId not in assigned_ids:
-                raise HTTPException(status_code=403, detail="คุณไม่มีสิทธิ์เข้าถึงสถานที่นี้")
-            query = query.filter_by(location_id=locationId)
+        assigned_ids = [assign.floor_id for assign in current_user.assignments]
+        if floorId:
+            if floorId not in assigned_ids:
+                raise HTTPException(status_code=403, detail="คุณไม่มีสิทธิ์เข้าถึงชั้นข้อมูลนี้")
+            query = query.filter_by(floor_id=floorId)
         else:
-            query = query.filter(AirConditioner.location_id.in_(assigned_ids)) if assigned_ids else query.filter(False)
+            query = query.filter(AirConditioner.floor_id.in_(assigned_ids)) if assigned_ids else query.filter(False)
+            if locationId:
+                query = query.filter_by(location_id=locationId)
     else:
+        if floorId:
+            query = query.filter_by(floor_id=floorId)
         if locationId:
             query = query.filter_by(location_id=locationId)
             
     if buildingId:
         query = query.filter_by(building_id=buildingId)
-    if floorId:
-        query = query.filter_by(floor_id=floorId)
     
     return [ac_to_dict(ac) for ac in query.all()]
 
@@ -921,12 +974,12 @@ def get_single_ac(ac_id: str, current_user: User = Depends(get_current_user), db
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
-    check_location_access(current_user, ac.location_id, db)
+    check_floor_access(current_user, ac.floor_id, db)
     return ac_to_dict(ac)
 
 @app.post("/api/v1/acs")
 def create_ac(data: ACCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    check_location_access(current_user, data.locationId, db)
+    check_floor_access(current_user, data.floorId, db)
     
     # Validate unique name
     exists = db.query(AirConditioner).filter(AirConditioner.name == data.name).first()
@@ -978,7 +1031,7 @@ def update_ac(ac_id: str, data: ACUpdate, current_user: User = Depends(get_curre
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
-    check_location_access(current_user, ac.location_id, db)
+    check_floor_access(current_user, ac.floor_id, db)
         
     if data.name:
         ac.name = data.name
@@ -1025,7 +1078,7 @@ def delete_ac(ac_id: str, current_user: User = Depends(get_current_user), db: Se
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
-    check_location_access(current_user, ac.location_id, db)
+    check_floor_access(current_user, ac.floor_id, db)
     db.delete(ac)
     db.commit()
     return {"status": "success"}
@@ -1036,7 +1089,7 @@ def create_maintenance_log(ac_id: str, data: LogCreate, current_user: User = Dep
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
-    check_location_access(current_user, ac.location_id, db)
+    check_floor_access(current_user, ac.floor_id, db)
         
     log = MaintenanceLog(
         ac_id=ac.id,
@@ -1061,7 +1114,7 @@ def update_maintenance_log(ac_id: str, log_id: int, data: LogCreate, current_use
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
-    check_location_access(current_user, ac.location_id, db)
+    check_floor_access(current_user, ac.floor_id, db)
     log = db.query(MaintenanceLog).filter_by(id=log_id, ac_id=ac_id).first()
     if not log:
         raise HTTPException(status_code=404, detail="Maintenance log not found")
@@ -1084,7 +1137,7 @@ def delete_maintenance_log(ac_id: str, log_id: int, current_user: User = Depends
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
-    check_location_access(current_user, ac.location_id, db)
+    check_floor_access(current_user, ac.floor_id, db)
     log = db.query(MaintenanceLog).filter_by(id=log_id, ac_id=ac_id).first()
     if not log:
         raise HTTPException(status_code=404, detail="Maintenance log not found")
@@ -1152,21 +1205,21 @@ def api_create_assignment(user_id: str, data: AssignmentCreate, current_user: Us
         raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้งานนี้")
         
     # Check if assignment already exists
-    exists = db.query(UserAssignment).filter_by(user_id=user_id, location_id=data.location_id).first()
+    exists = db.query(UserAssignment).filter_by(user_id=user_id, floor_id=data.floor_id).first()
     if exists:
-        return {"status": "success", "message": "ได้รับสิทธิ์เข้าถึงสถานที่นี้อยู่แล้ว"}
+        return {"status": "success", "message": "ได้รับสิทธิ์เข้าถึงชั้นข้อมูลนี้อยู่แล้ว"}
         
     assignment = UserAssignment(
         user_id=user_id,
-        location_id=data.location_id
+        floor_id=data.floor_id
     )
     db.add(assignment)
     db.commit()
     return {"status": "success"}
 
-@app.delete("/api/v1/admin/users/{user_id}/assignments/{loc_id}")
-def api_delete_assignment(user_id: str, loc_id: str, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
-    assignment = db.query(UserAssignment).filter_by(user_id=user_id, location_id=loc_id).first()
+@app.delete("/api/v1/admin/users/{user_id}/assignments/{floor_id}")
+def api_delete_assignment(user_id: str, floor_id: str, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    assignment = db.query(UserAssignment).filter_by(user_id=user_id, floor_id=floor_id).first()
     if not assignment:
         raise HTTPException(status_code=404, detail="ไม่พบข้อมูลการมอบหมายงานนี้")
         

@@ -75,32 +75,48 @@
               <!-- Assignments Section for Technicians -->
               {% if u.role == 'technician' %}
               <div class="space-y-2">
-                <span class="text-xs font-bold text-slate-500 uppercase block">สถานที่รับผิดชอบ:</span>
-                <div class="flex flex-wrap gap-1.5 items-center">
+                <span class="text-xs font-bold text-slate-500 uppercase block">สถานที่และชั้นรับผิดชอบ:</span>
+                <div class="flex flex-wrap gap-2 items-center">
                   {% if u.assignments %}
                     {% for assign in u.assignments %}
-                    <span class="inline-flex items-center gap-1 text-xs bg-brand-50 border border-brand-100 text-brand-800 px-2.5 py-1 rounded-lg">
-                      {{ assign.location_name }}
-                      <button onclick="handleDeleteAssignment('{{ u.id }}', '{{ assign.location_id }}')" class="hover:text-red-600 focus:outline-none transition">
+                    <span class="inline-flex items-center gap-1.5 text-xs bg-slate-50 border border-slate-200 text-slate-700 px-2.5 py-1 rounded-lg shadow-sm">
+                      <span class="font-medium text-slate-800">{{ assign.location_name }}</span>
+                      <span class="text-slate-400">/</span>
+                      <span>{{ assign.building_name }}</span>
+                      <span class="text-slate-400">/</span>
+                      <span class="font-bold text-brand-800 bg-brand-50/50 px-1 rounded">{{ assign.floor_name }}</span>
+                      <button onclick="handleDeleteAssignment('{{ u.id }}', '{{ assign.floor_id }}')" class="text-slate-400 hover:text-red-600 focus:outline-none transition ml-1" title="ยกเลิกการมอบหมายชั้นนี้">
                         <i data-lucide="x" class="w-3.5 h-3.5"></i>
                       </button>
                     </span>
                     {% endfor %}
                   {% else %}
                     <span class="text-xs text-amber-600 font-medium italic flex items-center gap-1">
-                      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> ยังไม่ได้รับมอบหมายสถานที่
+                      <i data-lucide="alert-triangle" class="w-3.5 h-3.5"></i> ยังไม่ได้รับมอบหมายชั้นงาน
                     </span>
                   {% endif %}
                 </div>
 
                 <!-- Add Assignment Dropdown form -->
-                <div class="flex items-center gap-2 mt-3 pt-2">
-                  <select id="assign-loc-{{ u.id }}" class="px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500">
-                    <option value="">-- เลือกสถานที่มอบหมาย --</option>
+                <div class="flex flex-wrap items-center gap-2 mt-3 pt-2">
+                  <!-- Location Dropdown -->
+                  <select id="assign-loc-{{ u.id }}" onchange="updateBuildingDropdown('{{ u.id }}')" class="px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500 bg-white">
+                    <option value="">-- เลือกสถานที่ --</option>
                     {% for loc in locations %}
                       <option value="{{ loc.id }}">{{ loc.name }}</option>
                     {% endfor %}
                   </select>
+
+                  <!-- Building Dropdown -->
+                  <select id="assign-bld-{{ u.id }}" onchange="updateFloorDropdown('{{ u.id }}')" disabled class="px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500 bg-white disabled:opacity-50">
+                    <option value="">-- เลือกอาคาร --</option>
+                  </select>
+
+                  <!-- Floor Dropdown -->
+                  <select id="assign-flr-{{ u.id }}" disabled class="px-2 py-1 border border-slate-300 rounded text-xs focus:outline-none focus:border-brand-500 bg-white disabled:opacity-50">
+                    <option value="">-- เลือกชั้น --</option>
+                  </select>
+
                   <button onclick="handleAddAssignment('{{ u.id }}')" class="px-2.5 py-1 bg-brand-100 text-brand-800 hover:bg-brand-200 rounded text-xs font-bold transition flex items-center gap-1">
                     <i data-lucide="plus" class="w-3.5 h-3.5"></i> มอบหมายงาน
                   </button>
@@ -132,6 +148,85 @@
 
 {% block scripts %}
 <script>
+  // Inject locations, buildings, and floors nested structure from Jinja context
+  const LOCATIONS_DATA = [
+    {% for loc in locations %}
+    {
+      id: "{{ loc.id }}",
+      name: "{{ loc.name }}",
+      buildings: [
+        {% for bld in loc.buildings %}
+        {
+          id: "{{ bld.id }}",
+          name: "{{ bld.name }}",
+          floors: [
+            {% for flr in bld.floors %}
+            {
+              id: "{{ flr.id }}",
+              name: "{{ flr.name }}"
+            },
+            {% endfor %}
+          ]
+        },
+        {% endfor %}
+      ]
+    },
+    {% endfor %}
+  ];
+
+  // Update Building dropdown options when Location is selected
+  function updateBuildingDropdown(userId) {
+    const locId = document.getElementById(`assign-loc-${userId}`).value;
+    const bldSelect = document.getElementById(`assign-bld-${userId}`);
+    const flrSelect = document.getElementById(`assign-flr-${userId}`);
+
+    // Reset dropdowns
+    bldSelect.innerHTML = '<option value="">-- เลือกอาคาร --</option>';
+    bldSelect.disabled = true;
+    flrSelect.innerHTML = '<option value="">-- เลือกชั้น --</option>';
+    flrSelect.disabled = true;
+
+    if (!locId) return;
+
+    const loc = LOCATIONS_DATA.find(l => l.id === locId);
+    if (loc && loc.buildings.length > 0) {
+      loc.buildings.forEach(bld => {
+        const opt = document.createElement("option");
+        opt.value = bld.id;
+        opt.textContent = bld.name;
+        bldSelect.appendChild(opt);
+      });
+      bldSelect.disabled = false;
+    }
+  }
+
+  // Update Floor dropdown options when Building is selected
+  function updateFloorDropdown(userId) {
+    const locId = document.getElementById(`assign-loc-${userId}`).value;
+    const bldId = document.getElementById(`assign-bld-${userId}`).value;
+    const flrSelect = document.getElementById(`assign-flr-${userId}`);
+
+    // Reset floor dropdown
+    flrSelect.innerHTML = '<option value="">-- เลือกชั้น --</option>';
+    flrSelect.disabled = true;
+
+    if (!locId || !bldId) return;
+
+    const loc = LOCATIONS_DATA.find(l => l.id === locId);
+    if (loc) {
+      const bld = loc.buildings.find(b => b.id === bldId);
+      if (bld && bld.floors.length > 0) {
+        bld.floors.forEach(flr => {
+          const opt = document.createElement("option");
+          opt.value = flr.id;
+          opt.textContent = flr.name;
+          flrSelect.appendChild(opt);
+        });
+        flrSelect.disabled = false;
+      }
+    }
+  }
+
   // Toggle password visibility
   function togglePasswordVisibility(inputId, iconId) {
     const input = document.getElementById(inputId);
@@ -195,12 +290,12 @@
     }
   }
 
-  // Add Location Assignment
+  // Add Floor Assignment
   async function handleAddAssignment(userId) {
-    const locSelect = document.getElementById(`assign-loc-${userId}`);
-    const locationId = locSelect.value;
-    if (!locationId) {
-      alert("กรุณาเลือกสถานที่ก่อนกดมอบหมายงาน");
+    const flrSelect = document.getElementById(`assign-flr-${userId}`);
+    const floorId = flrSelect.value;
+    if (!floorId) {
+      alert("กรุณาเลือกชั้นก่อนกดมอบหมายงาน");
       return;
     }
 
@@ -208,7 +303,7 @@
       const res = await fetch(`/api/v1/admin/users/${userId}/assignments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ location_id: locationId })
+        body: JSON.stringify({ floor_id: floorId })
       });
 
       if (res.ok) {
@@ -222,12 +317,12 @@
     }
   }
 
-  // Remove Location Assignment
-  async function handleDeleteAssignment(userId, locationId) {
-    if (!confirm("คุณต้องการยกเลิกการมอบหมายสถานที่นี้ใช่หรือไม่?")) return;
+  // Remove Floor Assignment
+  async function handleDeleteAssignment(userId, floorId) {
+    if (!confirm("คุณต้องการยกเลิกการมอบหมายชั้นนี้ใช่หรือไม่?")) return;
 
     try {
-      const res = await fetch(`/api/v1/admin/users/${userId}/assignments/${locationId}`, {
+      const res = await fetch(`/api/v1/admin/users/${userId}/assignments/${floorId}`, {
         method: 'DELETE'
       });
 
