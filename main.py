@@ -724,17 +724,41 @@ def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, high
         "current_user": current_user
     })
 
-# Direct QR Code Route
-@app.get("/ac/{ac_id}")
-def route_qr_code(ac_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+# Direct QR Code Route (Public - No Login Required)
+@app.get("/ac/{ac_id}", response_class=HTMLResponse)
+def route_qr_code(request: Request, ac_id: str, db: Session = Depends(get_db)):
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="ไม่พบรหัสเครื่องปรับอากาศนี้ในฐานข้อมูล")
     
-    check_location_access(current_user, ac.location_id, db)
+    # Retrieve Location, Building, and Floor details for presentation
+    loc = db.query(Location).filter_by(id=ac.location_id).first()
+    bld = db.query(Building).filter_by(id=ac.building_id).first()
+    flr = db.query(Floor).filter_by(id=ac.floor_id).first()
     
-    # Redirect directly to workspace and highlight this AC marker
-    return RedirectResponse(url=f"/workspace/{ac.location_id}/{ac.building_id}/{ac.floor_id}?highlight={ac.id}")
+    # Optional authentication check to render workspace link if logged in
+    current_user = None
+    token = request.cookies.get("access_token")
+    if token:
+        try:
+            payload = decode_access_token(token)
+            if payload:
+                user_id = payload.get("sub")
+                current_user = db.query(User).filter_by(id=user_id).first()
+        except Exception:
+            pass
+
+    # Sort maintenance history by date descending
+    logs = sorted(ac.maintenance_history, key=lambda l: l.date, reverse=True)
+    
+    return templates.TemplateResponse(request, "ac_public.html", {
+        "ac": ac,
+        "location": loc,
+        "building": bld,
+        "floor": flr,
+        "logs": logs,
+        "current_user": current_user
+    })
 
 # AC List Page
 @app.get("/acs", response_class=HTMLResponse)
