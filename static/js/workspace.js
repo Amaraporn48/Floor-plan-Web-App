@@ -147,8 +147,8 @@ function renderSidebarACList() {
     item.className = "flex items-center justify-between p-3.5 hover:bg-slate-50 cursor-pointer transition select-none text-xs border-l-4 " + 
       (ac.status === 'normal' ? 'border-emerald-500' :
        ac.status === 'check' ? 'border-amber-500' :
-       ac.status === 'repair' ? 'border-orange-500' :
-       ac.status === 'broken' ? 'border-rose-500' : 'border-slate-400');
+       ac.status === 'repair' ? 'border-red-500' :
+       ac.status === 'broken' ? 'border-[#8b4513]' : 'border-slate-400');
        
     item.onclick = () => {
       highlightMarkerOnMap(ac.id);
@@ -360,8 +360,8 @@ async function openSideDrawer(acId) {
     pill.className = "w-4 h-4 rounded-full " + 
       (ac.status === 'normal' ? 'bg-emerald-500' :
        ac.status === 'check' ? 'bg-amber-500' :
-       ac.status === 'repair' ? 'bg-orange-500' :
-       ac.status === 'broken' ? 'bg-rose-500' : 'bg-slate-400');
+       ac.status === 'repair' ? 'bg-red-500' :
+       ac.status === 'broken' ? 'bg-[#8b4513]' : 'bg-slate-400');
        
     label.textContent = 
       ac.status === 'normal' ? 'ใช้งานปกติ' :
@@ -371,8 +371,8 @@ async function openSideDrawer(acId) {
     label.className = "text-sm font-bold " + 
       (ac.status === 'normal' ? 'text-emerald-600' :
        ac.status === 'check' ? 'text-amber-500' :
-       ac.status === 'repair' ? 'text-orange-500' :
-       ac.status === 'broken' ? 'text-rose-600' : 'text-slate-500');
+       ac.status === 'repair' ? 'text-red-500' :
+       ac.status === 'broken' ? 'text-[#8b4513]' : 'text-slate-500');
 
     // Populate photos
     const gallery = document.getElementById('detail-images-container');
@@ -459,8 +459,8 @@ function renderMaintenanceHistoryList(ac) {
     let label = 'ใช้งานปกติ';
     let labelClass = 'bg-emerald-100 text-emerald-800';
     if (log.status === 'check') { label = 'ต้องตรวจสอบ'; labelClass = 'bg-amber-100 text-amber-800'; }
-    if (log.status === 'repair') { label = 'ต้องซ่อม'; labelClass = 'bg-orange-100 text-orange-800'; }
-    if (log.status === 'broken') { label = 'ชำรุด'; labelClass = 'bg-rose-100 text-rose-800'; }
+    if (log.status === 'repair') { label = 'ต้องซ่อม'; labelClass = 'bg-red-100 text-red-800'; }
+    if (log.status === 'broken') { label = 'ชำรุด'; labelClass = 'bg-[#f5e6d3] text-[#8b4513]'; }
     if (log.status === 'inactive') { label = 'ไม่ได้ใช้งาน'; labelClass = 'bg-slate-200 text-slate-700'; }
 
     item.innerHTML = `
@@ -1199,8 +1199,8 @@ function renderHistoryModalList() {
     let label = 'ใช้งานปกติ';
     let labelClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
     if (log.status === 'check') { label = 'ต้องตรวจสอบ'; labelClass = 'bg-amber-100 text-amber-800 border-amber-200'; }
-    if (log.status === 'repair') { label = 'ต้องซ่อม'; labelClass = 'bg-orange-100 text-orange-800 border-orange-200'; }
-    if (log.status === 'broken') { label = 'ชำรุด'; labelClass = 'bg-rose-100 text-rose-800 border-rose-200'; }
+    if (log.status === 'repair') { label = 'ต้องซ่อม'; labelClass = 'bg-red-100 text-red-800 border-red-200'; }
+    if (log.status === 'broken') { label = 'ชำรุด'; labelClass = 'bg-[#f5e6d3] text-[#8b4513] border-[#ebd4bb]'; }
     if (log.status === 'inactive') { label = 'ไม่ได้ใช้งาน'; labelClass = 'bg-slate-100 text-slate-700 border-slate-200'; }
 
     item.innerHTML = `
