@@ -438,7 +438,10 @@ function renderMaintenanceHistoryList(ac) {
   if (!list) return;
   list.innerHTML = '';
 
-  ac.maintenanceHistory.forEach(log => {
+  // Limit sidebar to last 3 entries, reversed (newest first)
+  const recentLogs = [...ac.maintenanceHistory].slice(-3).reverse();
+
+  recentLogs.forEach(log => {
     const item = document.createElement('div');
     item.className = "p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs flex flex-col gap-1.5 shadow-sm";
 
@@ -469,6 +472,23 @@ function renderMaintenanceHistoryList(ac) {
     `;
     list.appendChild(item);
   });
+
+  // Update view full history button
+  const viewAllBtn = document.getElementById('view-all-history-btn');
+  if (viewAllBtn) {
+    if (ac.maintenanceHistory.length > 0) {
+      viewAllBtn.style.display = 'flex';
+      viewAllBtn.innerHTML = `<i data-lucide="folder-open" class="w-4 h-4"></i> ดูประวัติทั้งหมด (${ac.maintenanceHistory.length} รายการ)`;
+    } else {
+      viewAllBtn.style.display = 'none';
+    }
+  }
+
+  // Update history modal dynamically if it is open
+  if (state.historyAC && state.historyAC.id === ac.id) {
+    state.historyAC = ac;
+    renderHistoryModalList();
+  }
 
   // Reset inputs
   cancelEditMaintenance();
@@ -1049,4 +1069,141 @@ async function convertPdfToImage(file) {
     reader.onerror = () => reject(new Error('เกิดข้อผิดพลาดในการอ่านไฟล์ PDF'));
     reader.readAsArrayBuffer(file);
   });
+}
+
+// ==========================================
+// RICH MAINTENANCE HISTORY MODAL CONTROLS
+// ==========================================
+function openHistoryModal() {
+  const acId = state.selectedACId;
+  const ac = state.acs.find(a => a.id === acId);
+  if (!ac) return;
+
+  // Initialize history modal state
+  state.historyAC = ac;
+  state.historySortOrder = 'desc';
+  state.historyDateFilter = '';
+
+  // Setup modal labels
+  document.getElementById('history-modal-title').textContent = `ประวัติการซ่อมบำรุงทั้งหมด`;
+  document.getElementById('history-modal-subtitle').textContent = `${ac.name} | ${ac.brand || '-'} / ${ac.model || '-'} (${ac.room || 'ไม่ระบุห้อง'})`;
+
+  // Reset inputs
+  document.getElementById('history-filter-date').value = '';
+  document.getElementById('history-sort-btn').innerHTML = `<i data-lucide="arrow-down-narrow-wide" class="w-4 h-4"></i> เรียงลำดับ: ล่าสุด`;
+
+  // Render logs
+  renderHistoryModalList();
+
+  // Show modal
+  document.getElementById('history-modal').classList.remove('hidden');
+  lucide.createIcons();
+}
+
+function closeHistoryModal() {
+  document.getElementById('history-modal').classList.add('hidden');
+  state.historyAC = null;
+}
+
+function toggleHistorySort() {
+  const btn = document.getElementById('history-sort-btn');
+  if (state.historySortOrder === 'desc') {
+    state.historySortOrder = 'asc';
+    btn.innerHTML = `<i data-lucide="arrow-up-narrow-wide" class="w-4 h-4"></i> เรียงลำดับ: เก่าสุด`;
+  } else {
+    state.historySortOrder = 'desc';
+    btn.innerHTML = `<i data-lucide="arrow-down-narrow-wide" class="w-4 h-4"></i> เรียงลำดับ: ล่าสุด`;
+  }
+  renderHistoryModalList();
+}
+
+function applyHistoryFilters() {
+  state.historyDateFilter = document.getElementById('history-filter-date').value;
+  renderHistoryModalList();
+}
+
+function clearHistoryDateFilter() {
+  document.getElementById('history-filter-date').value = '';
+  state.historyDateFilter = '';
+  renderHistoryModalList();
+}
+
+function renderHistoryModalList() {
+  const container = document.getElementById('history-modal-list');
+  if (!container) return;
+  container.innerHTML = '';
+
+  const ac = state.historyAC;
+  if (!ac) return;
+
+  // Filter logs
+  let filteredLogs = [...ac.maintenanceHistory];
+  if (state.historyDateFilter) {
+    filteredLogs = filteredLogs.filter(log => {
+      return log.date === state.historyDateFilter;
+    });
+  }
+
+  // Sort logs
+  filteredLogs.sort((a, b) => {
+    const dateComp = a.date.localeCompare(b.date);
+    if (dateComp !== 0) {
+      return state.historySortOrder === 'desc' ? -dateComp : dateComp;
+    }
+    return state.historySortOrder === 'desc' ? b.id - a.id : a.id - b.id;
+  });
+
+  if (filteredLogs.length === 0) {
+    container.innerHTML = `
+      <div class="text-center py-12 text-slate-400">
+        <i data-lucide="info" class="w-10 h-10 mx-auto mb-2 text-slate-300"></i>
+        <p class="text-xs">ไม่พบข้อมูลประวัติการซ่อมบำรุงตามตัวกรองที่ระบุ</p>
+      </div>
+    `;
+    lucide.createIcons();
+    return;
+  }
+
+  filteredLogs.forEach(log => {
+    const item = document.createElement('div');
+    item.className = "p-4 bg-white border border-slate-200 rounded-xl text-xs flex flex-col gap-2 shadow-sm";
+
+    let label = 'ใช้งานปกติ';
+    let labelClass = 'bg-emerald-100 text-emerald-800 border-emerald-200';
+    if (log.status === 'check') { label = 'ต้องตรวจสอบ'; labelClass = 'bg-amber-100 text-amber-800 border-amber-200'; }
+    if (log.status === 'repair') { label = 'ต้องซ่อม'; labelClass = 'bg-orange-100 text-orange-800 border-orange-200'; }
+    if (log.status === 'broken') { label = 'ชำรุด'; labelClass = 'bg-rose-100 text-rose-800 border-rose-200'; }
+    if (log.status === 'inactive') { label = 'ไม่ได้ใช้งาน'; labelClass = 'bg-slate-100 text-slate-700 border-slate-200'; }
+
+    item.innerHTML = `
+      <div class="flex items-center justify-between font-bold text-slate-500">
+        <span class="flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> ${formatDateTime(log.date)}</span>
+        <div class="flex items-center gap-1.5">
+          <span class="px-2 py-0.5 rounded-full text-[10px] border ${labelClass}">${label}</span>
+          <button onclick="startEditFromModal(${log.id}, \`${escapeHtml(log.note)}\`, '${log.status}', \`${escapeHtml(log.technician)}\`)" class="text-slate-400 hover:text-brand-500 transition p-1 bg-slate-50 hover:bg-slate-100 rounded" title="แก้ไขประวัติ">
+            <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+          </button>
+          <button onclick="deleteFromModal(${log.id})" class="text-slate-400 hover:text-rose-500 transition p-1 bg-slate-50 hover:bg-rose-50 rounded" title="ลบประวัติ">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+      </div>
+      <div class="text-slate-800 font-medium bg-slate-50/50 p-2.5 rounded-lg border border-slate-100 whitespace-pre-wrap leading-relaxed">${log.note}</div>
+      <div class="text-[10px] text-slate-400 flex items-center gap-1">
+        <i data-lucide="user" class="w-3.5 h-3.5 text-slate-300"></i> ดำเนินงานโดย: <span class="font-bold text-slate-600">${log.technician}</span>
+      </div>
+    `;
+    container.appendChild(item);
+  });
+
+  lucide.createIcons();
+}
+
+function startEditFromModal(logId, note, status, technician) {
+  closeHistoryModal();
+  startEditMaintenanceLog(state.historyAC.id, logId, note, status, technician);
+}
+
+function deleteFromModal(logId) {
+  deleteMaintenanceLog(state.historyAC.id, logId);
 }
