@@ -67,7 +67,8 @@
         <!-- Rendered dynamically -->
       </div>
 
-      <!-- Blueprint Uploader -->
+      <!-- Blueprint Uploader (Admin Only) -->
+      {% if current_user.role == 'admin' %}
       <div class="p-4 border-t border-slate-200 bg-slate-50">
         <label class="block text-xs font-bold text-slate-600 mb-2">อัปโหลด/แนบไฟล์แปลนพื้น (Floor Plan)</label>
         <div class="relative border-2 border-dashed border-slate-300 rounded-lg p-3.5 hover:border-brand-500 transition text-center cursor-pointer bg-white">
@@ -83,6 +84,7 @@
           <i data-lucide="loader" class="w-3.5 h-3.5 animate-spin"></i> กำลังแปลงไฟล์เป็นความละเอียดสูง 4K...
         </div>
       </div>
+      {% endif %}
     </aside>
 
     <!-- Viewport Workspace Canvas Area -->
