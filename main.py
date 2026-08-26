@@ -559,6 +559,23 @@ def update_user_profile(data: UpdateProfileRequest, current_user: User = Depends
     db.commit()
     return {"status": "success", "message": "อัปเดตข้อมูลส่วนตัวสำเร็จเรียบร้อยแล้ว"}
 
+# Admin Reset User Password Schema
+class AdminResetPasswordRequest(BaseModel):
+    new_password: str
+
+# Admin Reset User Password Endpoint
+@app.post("/api/v1/admin/users/{user_id}/reset-password")
+def admin_reset_user_password(user_id: str, data: AdminResetPasswordRequest, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    user = db.query(User).filter_by(id=user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="ไม่พบผู้ใช้งานนี้ในระบบ")
+    if len(data.new_password) < 6:
+        raise HTTPException(status_code=400, detail="รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร")
+        
+    user.hashed_password = hash_password(data.new_password)
+    db.commit()
+    return {"status": "success", "message": "เปลี่ยนรหัสผ่านช่างเทคนิคเรียบร้อยแล้ว"}
+
 # User Administration Panel (Admin Only)
 @app.get("/admin/users", response_class=HTMLResponse)
 def page_admin_users(request: Request, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
