@@ -247,7 +247,8 @@ def on_startup():
                     username="admin",
                     hashed_password=hash_password("admin1234"),
                     role="admin",
-                    full_name="Admin System"
+                    full_name="Admin System",
+                    plain_password="admin1234"
                 )
                 db.add(admin)
                 db.commit()
@@ -555,6 +556,7 @@ def update_user_profile(data: UpdateProfileRequest, current_user: User = Depends
         if len(new_pwd) < 6:
             raise HTTPException(status_code=400, detail="รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร")
         current_user.hashed_password = hash_password(new_pwd)
+        current_user.plain_password = new_pwd
         
     db.commit()
     return {"status": "success", "message": "อัปเดตข้อมูลส่วนตัวสำเร็จเรียบร้อยแล้ว"}
@@ -573,6 +575,7 @@ def admin_reset_user_password(user_id: str, data: AdminResetPasswordRequest, cur
         raise HTTPException(status_code=400, detail="รหัสผ่านใหม่ต้องมีความยาวอย่างน้อย 6 ตัวอักษร")
         
     user.hashed_password = hash_password(data.new_password)
+    user.plain_password = data.new_password
     db.commit()
     return {"status": "success", "message": "เปลี่ยนรหัสผ่านช่างเทคนิคเรียบร้อยแล้ว"}
 
@@ -602,6 +605,7 @@ def page_admin_users(request: Request, current_user: User = Depends(get_current_
             "username": u.username,
             "full_name": u.full_name,
             "role": u.role,
+            "plain_password": u.plain_password,
             "assignments": assignments
         })
         
@@ -1260,7 +1264,8 @@ def api_create_user(data: UserCreate, current_user: User = Depends(get_current_a
         username=data.username,
         hashed_password=hash_password(data.password),
         role=data.role,
-        full_name=data.full_name
+        full_name=data.full_name,
+        plain_password=data.password
     )
     db.add(user)
     db.commit()

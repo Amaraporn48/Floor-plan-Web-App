@@ -49,6 +49,7 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     role = Column(String, default="technician", nullable=False) # "admin", "technician"
     full_name = Column(String, nullable=False)
+    plain_password = Column(String, nullable=True)
     
     # Relationships
     assignments = relationship("UserAssignment", back_populates="user", cascade="all, delete-orphan")
@@ -163,6 +164,15 @@ def init_db():
                 with engine.begin() as conn:
                     conn.execute(text("DROP TABLE user_assignments"))
                 print("Dropped old user_assignments table.")
+                
+        # Check if users table is missing plain_password column and add it
+        if "users" in inspector.get_table_names():
+            user_cols = [c["name"] for c in inspector.get_columns("users")]
+            if "plain_password" not in user_cols:
+                print("Adding plain_password column to users table...")
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE users ADD COLUMN plain_password VARCHAR"))
+                print("Column plain_password added.")
                 
         Base.metadata.create_all(bind=engine)
         

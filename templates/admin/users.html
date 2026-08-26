@@ -76,6 +76,17 @@
               <div class="flex items-center gap-2.5 flex-wrap">
                 <span class="font-bold text-slate-800 text-base">{{ u.full_name }}</span>
                 <span class="text-xs text-slate-400">(@{{ u.username }})</span>
+                
+                <!-- Display Plain Password to Admin -->
+                {% if u.plain_password %}
+                <span class="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded font-mono ml-1.5 border border-slate-200" title="รหัสผ่านปัจจุบัน">
+                  รหัส: {{ u.plain_password }}
+                </span>
+                {% else %}
+                <span class="text-xs text-slate-400 bg-slate-50 px-2 py-0.5 rounded font-mono ml-1.5 border border-dashed border-slate-200" title="ยังไม่มีการบันทึกรหัสผ่านแบบคำธรรมดา">
+                  รหัส: [เข้ารหัสลับ]
+                </span>
+                {% endif %}
                 {% if u.role == 'admin' %}
                 <span class="text-[10px] bg-purple-50 text-purple-700 border border-purple-200 font-bold px-2 py-0.5 rounded-full">Admin</span>
                 {% else %}
@@ -144,7 +155,7 @@
             <div class="flex items-center gap-1.5">
               {% if u.id != current_user_id %}
               <!-- Reset Password Button -->
-              <button onclick="openAdminResetPasswordModal('{{ u.id }}', '{{ u.full_name }}')" class="p-2 border border-slate-200 hover:border-brand-200 hover:bg-brand-50 text-slate-400 hover:text-brand-600 rounded-lg transition duration-150" title="เปลี่ยนรหัสผ่านบัญชีนี้">
+              <button onclick="openAdminResetPasswordModal('{{ u.id }}', '{{ u.full_name }}', '{{ u.plain_password or '' }}')" class="p-2 border border-slate-200 hover:border-brand-200 hover:bg-brand-50 text-slate-400 hover:text-brand-600 rounded-lg transition duration-150" title="เปลี่ยนรหัสผ่านบัญชีนี้">
                 <i data-lucide="key" class="w-4 h-4"></i>
               </button>
               
@@ -424,9 +435,15 @@
 
     <form id="admin-reset-pwd-form" onsubmit="handleAdminResetPassword(event)" class="p-6 space-y-4">
       <input type="hidden" id="reset-target-user-id">
-      <div>
-        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">บัญชีผู้ใช้</span>
-        <span id="reset-target-user-name" class="font-bold text-slate-800 text-sm">-</span>
+      <div class="flex justify-between items-center gap-4">
+        <div>
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">บัญชีผู้ใช้</span>
+          <span id="reset-target-user-name" class="font-bold text-slate-800 text-sm">-</span>
+        </div>
+        <div class="text-right">
+          <span class="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1">รหัสผ่านปัจจุบัน</span>
+          <span id="reset-target-current-password" class="font-mono text-xs font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 inline-block">-</span>
+        </div>
       </div>
 
       <div>
@@ -452,9 +469,10 @@
 </div>
 
 <script>
-  function openAdminResetPasswordModal(userId, fullName) {
+  function openAdminResetPasswordModal(userId, fullName, plainPassword) {
     document.getElementById('reset-target-user-id').value = userId;
     document.getElementById('reset-target-user-name').textContent = fullName;
+    document.getElementById('reset-target-current-password').textContent = plainPassword || '[เข้ารหัสลับ/ไม่มีข้อมูล]';
     document.getElementById('reset-new-password').value = '';
     document.getElementById('reset-new-password').type = 'password';
     
