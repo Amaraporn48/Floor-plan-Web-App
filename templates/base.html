@@ -150,6 +150,10 @@
         <span class="flex items-center gap-1 text-emerald-500">
           <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span> ผู้ใช้งาน: {{ current_user.full_name }} ({{ current_user.role }})
         </span>
+        {% else %}
+        <span class="flex items-center gap-1.5 text-slate-400">
+          <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> ผู้ใช้งาน: Guest (บุคคลทั่วไป)
+        </span>
         {% endif %}
       </div>
     </div>

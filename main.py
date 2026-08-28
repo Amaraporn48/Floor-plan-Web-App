@@ -862,7 +862,7 @@ def page_shared_dashboard(request: Request, ids: Optional[str] = None, current_u
     return templates.TemplateResponse(request, "shared_dashboard.html", {
         "locations": location_list,
         "active_tab": "locations",
-        "current_user": current_user
+        "current_user": None
     })
 
 # Shared / Public Location Hub (No Login Required)
@@ -913,7 +913,7 @@ def page_shared_floors(request: Request, loc_id: str, bld_id: str, current_user:
         "building": bld,
         "floors": floor_list,
         "active_tab": "locations",
-        "current_user": current_user
+        "current_user": None
     })
 
 # Shared / Public Workspace Route (No Login Required)
@@ -940,7 +940,7 @@ def page_shared_workspace(request: Request, loc_id: str, bld_id: str, flr_id: st
         "initial_acs": ac_list,
         "highlight_ac_id": highlight or "",
         "active_tab": "locations",
-        "current_user": current_user,
+        "current_user": None,
         "is_shared": True
     })
 
