@@ -44,124 +44,124 @@
     </button>
   </div>
 
-  <!-- Quick Action Start button -->
-  <div class="mb-8 p-6 bg-slate-900 rounded-xl text-white shadow-lg flex flex-col md:flex-row md:items-center justify-between gap-4 border-l-4 border-brand-500">
-    <div>
-      <h3 class="text-lg font-bold">ต้องการมาร์คตำแหน่ง หรืออัปเดตข้อมูลเครื่องปรับอากาศ?</h3>
-      <p class="text-sm text-slate-300 mt-1">กรุณาเลือกสถานที่และอาคารเพื่อเปิดดู Floor Plan ปฏิบัติการงานช่าง</p>
-    </div>
-    <div>
-      <a href="/locations" class="w-full md:w-auto px-6 py-3 bg-brand-500 hover:bg-brand-100 hover:text-brand-900 text-white font-bold rounded-lg shadow-md transition flex items-center justify-center gap-2 text-center">
-        <i data-lucide="map-pin" class="w-5 h-5"></i> เลือกสถานที่ปฏิบัติงาน
-      </a>
-    </div>
-  </div>
-
-  <!-- Stats Grid -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+  <!-- Stats Grid (Single Row, Accented Left-Borders) -->
+  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
     <!-- Card Total Locations -->
-    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
-      <div class="p-3 rounded-full bg-slate-100 text-slate-600">
-        <i data-lucide="building" class="w-6 h-6"></i>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-600 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-blue-50 text-brand-600 flex-none">
+        <i data-lucide="building" class="w-5 h-5"></i>
       </div>
-      <div>
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">สถานที่ทั้งหมด</div>
         <div class="flex items-baseline gap-1">
-          <span id="stats-loc-val" class="text-2xl font-bold text-slate-800">{{ stats.locations_count }}</span>
-          <span id="stats-loc-lbl" class="text-xs text-slate-500 font-bold">สถานที่</span>
+          <span id="stats-loc-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.locations_count }}</span>
+          <span id="stats-loc-lbl" class="text-[10px] text-slate-500 font-bold">รพ.</span>
         </div>
-        <div id="stats-loc-sub" class="text-xs text-slate-400 font-medium mt-0.5">ระบบ Cloud Database</div>
+        <div id="stats-loc-sub" class="text-[9px] text-slate-400 truncate">ระบบ Cloud Database</div>
       </div>
     </div>
 
     <!-- Card Total ACs -->
-    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
-      <div class="p-3 rounded-full bg-blue-50 text-brand-500">
-        <i data-lucide="pocket" class="w-6 h-6"></i>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-slate-500 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-slate-50 text-slate-500 flex-none">
+        <i data-lucide="pocket" class="w-5 h-5"></i>
       </div>
-      <div>
-        <div id="stats-ac-val" class="text-2xl font-bold text-slate-800">{{ stats.acs_count }}</div>
-        <div class="text-xs text-slate-500 font-medium">เครื่องปรับอากาศทั้งหมด</div>
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">แอร์ทั้งหมด</div>
+        <div id="stats-ac-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.acs_count }}</div>
+        <div class="text-[9px] text-slate-400">เครื่องติดตั้ง</div>
       </div>
     </div>
 
     <!-- Card Active -->
-    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
-      <div class="p-3 rounded-full bg-emerald-50 text-emerald-500">
-        <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-emerald-50 text-emerald-600 flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+        </span>
       </div>
-      <div>
-        <div id="stats-normal-val" class="text-2xl font-bold text-slate-800">{{ stats.normal_count }}</div>
-        <div class="text-xs text-slate-500 font-medium">ใช้งานปกติ (สีเขียว)</div>
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ใช้งานปกติ</div>
+        <div id="stats-normal-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.normal_count }}</div>
+        <div class="text-[9px] text-emerald-600 font-medium">ระบบทำงานได้ดี</div>
       </div>
     </div>
 
     <!-- Card Warnings -->
-    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center gap-4">
-      <div class="p-3 rounded-full bg-amber-50 text-amber-500">
-        <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-amber-50 text-amber-600 flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+        </span>
       </div>
-      <div>
-        <div id="stats-check-val" class="text-2xl font-bold text-slate-800">{{ stats.check_count }}</div>
-        <div class="text-xs text-slate-500 font-medium">ต้องตรวจสอบ (สีเหลือง)</div>
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ต้องตรวจสอบ</div>
+        <div id="stats-check-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.check_count }}</div>
+        <div class="text-[9px] text-amber-600 font-medium">รอดำเนินการ</div>
       </div>
     </div>
-  </div>
 
-  <!-- Status Breakdown Grid -->
-  <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
     <!-- Repair Required -->
-    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-3 h-3 rounded-full bg-red-500"></div>
-        <div>
-          <div class="text-sm font-semibold text-slate-700">เครื่องที่รอซ่อม / ต้องซ่อม</div>
-          <div class="text-xs text-slate-500">แก้ไขปัญหาหน้างาน</div>
-        </div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-red-500 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-red-50 text-red-600 flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+        </span>
       </div>
-      <div id="stats-repair-val" class="text-2xl font-bold text-slate-800">{{ stats.repair_count }}</div>
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">รอซ่อม / ต้องซ่อม</div>
+        <div id="stats-repair-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.repair_count }}</div>
+        <div class="text-[9px] text-red-600 font-medium">แก้ไขหน้างาน</div>
+      </div>
     </div>
 
     <!-- Broken -->
-    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-3 h-3 rounded-full bg-[#8b4513]"></div>
-        <div>
-          <div class="text-sm font-semibold text-slate-700">เครื่องชำรุด / เสีย</div>
-          <div class="text-xs text-slate-500">ต้องเสนอเปลี่ยนอะไหล่</div>
-        </div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-[#8b4513] flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-orange-50/50 text-[#8b4513] flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8b4513] opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#8b4513]"></span>
+        </span>
       </div>
-      <div id="stats-broken-val" class="text-2xl font-bold text-slate-800">{{ stats.broken_count }}</div>
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ชำรุด / เสีย</div>
+        <div id="stats-broken-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.broken_count }}</div>
+        <div class="text-[9px] text-[#8b4513] font-medium">ต้องเสนออะไหล่</div>
+      </div>
     </div>
 
     <!-- Inactive -->
-    <div class="bg-white p-5 rounded-lg border border-slate-200 shadow-sm flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-3 h-3 rounded-full bg-slate-400"></div>
-        <div>
-          <div class="text-sm font-semibold text-slate-700">ไม่ได้ใช้งาน</div>
-          <div class="text-xs text-slate-500">ปิดการทำงานชั่วคราว</div>
-        </div>
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-slate-400 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-slate-50 text-slate-400 flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-400"></span>
+        </span>
       </div>
-      <div id="stats-inactive-val" class="text-2xl font-bold text-slate-800">{{ stats.inactive_count }}</div>
+      <div class="min-w-0">
+        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ไม่ได้ใช้งาน</div>
+        <div id="stats-inactive-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.inactive_count }}</div>
+        <div class="text-[9px] text-slate-400">ปิดตัวชั่วคราว</div>
+      </div>
     </div>
   </div>
 
-  <!-- Search Section -->
-  <div class="bg-white p-6 rounded-lg border border-slate-200 shadow-sm mb-8">
-    <h3 class="text-base font-bold text-slate-700 mb-4 flex items-center gap-1.5">
-      <i data-lucide="search" class="w-5 h-5 text-slate-400"></i> ค้นหาเครื่องปรับอากาศอย่างรวดเร็ว
-    </h3>
-    <div class="flex flex-col md:flex-row gap-3">
-      <div class="relative flex-1">
-        <input type="text" id="dashboard-search-input" placeholder="ค้นหาด้วย หมายเลขแอร์, Serial Number, ยี่ห้อ, รุ่น, ห้อง, ชั้น..." class="w-full pl-10 pr-4 py-2.5 rounded-lg border border-slate-300 focus:outline-none focus:border-brand-500 text-sm">
-        <i data-lucide="search" class="absolute left-3 top-3 w-4 h-4 text-slate-400"></i>
-      </div>
-      <button onclick="handleDashboardSearch()" class="px-6 py-2.5 bg-brand-800 hover:bg-slate-700 text-white rounded-lg text-sm font-medium transition">
+  <!-- Search Section (Compact Dropdown-ready Design) -->
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-8 flex flex-col md:flex-row items-center gap-4 relative">
+    <div class="flex items-center gap-2 flex-none">
+      <i data-lucide="search" class="w-5 h-5 text-slate-400"></i>
+      <span class="text-sm font-bold text-slate-700">ค้นหาเครื่องปรับอากาศด่วน:</span>
+    </div>
+    <div class="relative flex-1 w-full">
+      <input type="text" id="dashboard-search-input" placeholder="ค้นหาด้วย หมายเลขแอร์, Serial Number, ยี่ห้อ, รุ่น, ห้อง, ชั้น..." class="w-full pl-4 pr-16 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-brand-500 text-sm">
+      <button onclick="handleDashboardSearch()" class="absolute right-1 top-1 px-4 py-1 bg-brand-800 hover:bg-slate-700 text-white rounded-md text-xs font-bold transition">
         ค้นหา
       </button>
     </div>
-    <!-- Search Results List Container -->
-    <div id="dashboard-search-results" class="mt-4 hidden max-h-60 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100">
+    <!-- Search Results Dropdown List -->
+    <div id="dashboard-search-results" class="absolute left-0 right-0 top-full mt-2 hidden max-h-60 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 z-30 bg-white shadow-lg">
       <!-- Dynamically populated -->
     </div>
   </div>
