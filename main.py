@@ -50,6 +50,17 @@ def decode_access_token(token: str) -> Optional[dict]:
 # Initialize FastAPI App
 app = FastAPI(title="TECHNICAL WATER - AC Management System")
 
+# Middleware to prevent caching of dynamic pages/APIs by Vercel CDN or browsers
+@app.middleware("http")
+async def add_no_cache_headers(request: Request, call_next):
+    response = await call_next(request)
+    path = request.url.path
+    if path.startswith("/api/") or "text/html" in request.headers.get("accept", ""):
+        response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        response.headers["Pragma"] = "no-cache"
+        response.headers["Expires"] = "0"
+    return response
+
 # Mount Static Files and Templates using absolute paths
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 app.mount("/static", StaticFiles(directory=os.path.join(BASE_DIR, "static")), name="static")
