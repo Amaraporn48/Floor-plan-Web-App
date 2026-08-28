@@ -196,6 +196,9 @@
               <i data-lucide="building-2" class="w-6 h-6"></i>
             </div>
             <div class="flex items-center gap-1.5 flex-none">
+              {% if current_user %}
+              <input type="checkbox" value="{{ loc.id }}" data-name="{{ loc.name }}" class="loc-share-checkbox w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer mr-0.5" onclick="event.stopPropagation(); onShareCheckboxChange();" title="เลือกสถานที่นี้เพื่อแชร์หลายแห่งพร้อมกัน">
+              {% endif %}
               <!-- Share Location Link -->
               <button onclick="shareLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="แชร์ลิงก์ดูอย่างเดียว">
                 <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
@@ -232,13 +235,63 @@
         <h4 class="font-bold text-slate-600 mb-1">ยังไม่มีสถานที่ติดตั้งในระบบ</h4>
         <p class="text-xs">กรุณากดปุ่มเพิ่มสถานที่ที่มุมขวาบนเพื่อเริ่มต้นการติดตั้งแผนผัง</p>
       </div>
-    {% endfor %}
+  </div>
+
+  <!-- Floating Share Bar -->
+  <div id="floating-share-bar" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-slate-900/95 backdrop-blur text-white px-6 py-3.5 rounded-xl shadow-2xl flex items-center gap-4 border border-slate-800 transition duration-300 transform translate-y-24 opacity-0 pointer-events-none">
+    <div class="flex items-center gap-2">
+      <i data-lucide="check-square" class="w-5 h-5 text-brand-400"></i>
+      <span class="text-sm font-semibold">เลือกแล้ว <strong id="selected-share-count" class="text-brand-400 font-black">0</strong> สถานที่</span>
+    </div>
+    <div class="h-6 w-px bg-slate-700"></div>
+    <button onclick="shareSelectedLocations()" class="px-4 py-2 bg-brand-500 hover:bg-brand-600 text-white text-xs font-bold rounded-lg transition flex items-center gap-1.5 shadow-md">
+      <i data-lucide="share-2" class="w-4 h-4"></i> คัดลอกลิงก์แชร์กลุ่มที่เลือก
+    </button>
+    <button onclick="clearSelectedLocationsShare()" class="text-slate-400 hover:text-white text-xs font-semibold px-2 py-1 transition">
+      ยกเลิก
+    </button>
   </div>
 </div>
 {% endblock %}
 
 {% block scripts %}
 <script>
+  function onShareCheckboxChange() {
+    const checkboxes = document.querySelectorAll('.loc-share-checkbox:checked');
+    const bar = document.getElementById('floating-share-bar');
+    const countSpan = document.getElementById('selected-share-count');
+    
+    if (checkboxes.length > 0) {
+      countSpan.textContent = checkboxes.length;
+      bar.classList.remove('translate-y-24', 'opacity-0', 'pointer-events-none');
+      bar.classList.add('translate-y-0', 'opacity-100', 'pointer-events-auto');
+    } else {
+      bar.classList.remove('translate-y-0', 'opacity-100', 'pointer-events-auto');
+      bar.classList.add('translate-y-24', 'opacity-0', 'pointer-events-none');
+    }
+  }
+  
+  function clearSelectedLocationsShare() {
+    const checkboxes = document.querySelectorAll('.loc-share-checkbox');
+    checkboxes.forEach(cb => cb.checked = false);
+    onShareCheckboxChange();
+  }
+  
+  function shareSelectedLocations() {
+    const checkboxes = document.querySelectorAll('.loc-share-checkbox:checked');
+    if (checkboxes.length === 0) return;
+    
+    const ids = Array.from(checkboxes).map(cb => cb.value).join(',');
+    const shareUrl = `${window.location.origin}/shared?ids=${ids}`;
+    
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert(`คัดลอกลิงก์สำหรับแชร์กลุ่ม (${checkboxes.length} สถานที่) เรียบร้อยแล้ว!\nคนนอกเปิดลิงก์นี้จะเห็นเฉพาะโรงพยาบาลที่คุณเลือกไว้\n\nลิงก์: ${shareUrl}`);
+      clearSelectedLocationsShare();
+    }).catch(err => {
+      prompt(`คัดลอกลิงก์สำหรับแชร์กลุ่ม:`, shareUrl);
+    });
+  }
+
   function shareAllLocationsPortal() {
     const shareUrl = `${window.location.origin}/shared`;
     navigator.clipboard.writeText(shareUrl).then(() => {

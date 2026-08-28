@@ -834,8 +834,12 @@ def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, high
 
 # Shared / Public Locations Dashboard (No Login Required)
 @app.get("/shared", response_class=HTMLResponse)
-def page_shared_dashboard(request: Request, current_user: Optional[User] = Depends(get_optional_user), db: Session = Depends(get_db)):
-    locations = db.query(Location).all()
+def page_shared_dashboard(request: Request, ids: Optional[str] = None, current_user: Optional[User] = Depends(get_optional_user), db: Session = Depends(get_db)):
+    query = db.query(Location)
+    if ids:
+        id_list = [i.strip() for i in ids.split(",") if i.strip()]
+        query = query.filter(Location.id.in_(id_list))
+    locations = query.all()
     
     location_list = []
     for loc in locations:
