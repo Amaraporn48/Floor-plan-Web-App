@@ -40,8 +40,8 @@
       </select>
     </div>
     <div class="flex items-center gap-2">
-      <button onclick="shareAllLocationsPortal()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-sm font-bold rounded-lg flex items-center justify-center gap-1.5 transition shadow-sm" title="แชร์ลิงก์หน้าดูแปลนแอร์รวมของทุกโรงพยาบาล">
-        <i data-lucide="share-2" class="w-4 h-4 text-brand-600"></i> แชร์ลิงก์ดูทุกโรงพยาบาล
+      <button id="btn-share-portal" onclick="toggleShareSelectionMode()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-sm font-bold rounded-lg flex items-center justify-center gap-1.5 transition shadow-sm" title="เลือกสถานที่สหรับแชร์หน้ารวมแบบเจาะจง">
+        <i data-lucide="share-2" class="w-4 h-4 text-brand-600"></i> เลือกแชร์หลายแห่ง
       </button>
       <button onclick="addNewLocation()" class="px-4 py-2 bg-brand-800 hover:bg-brand-500 text-white text-sm font-bold rounded-lg flex items-center justify-center gap-1.5 transition">
         <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มสถานที่ / โรงพยาบาล
@@ -214,7 +214,7 @@
           </div>
           <h4 class="text-lg font-bold text-slate-800 flex items-center gap-2">
             {% if current_user %}
-            <input type="checkbox" value="{{ loc.id }}" data-name="{{ loc.name }}" class="loc-share-checkbox w-4.5 h-4.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer flex-none" onclick="event.stopPropagation(); onShareCheckboxChange();" title="เลือกสถานที่นี้เพื่อแชร์หลายแห่งพร้อมกัน">
+            <input type="checkbox" value="{{ loc.id }}" data-name="{{ loc.name }}" class="loc-share-checkbox hidden w-4.5 h-4.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer flex-none" onclick="event.stopPropagation(); onShareCheckboxChange();" title="เลือกสถานที่นี้เพื่อแชร์หลายแห่งพร้อมกัน">
             {% endif %}
             <span>{{ loc.name }}</span>
           </h4>
@@ -259,6 +259,29 @@
 
 {% block scripts %}
 <script>
+  let shareSelectionMode = false;
+
+  function toggleShareSelectionMode(forceVal) {
+    shareSelectionMode = (forceVal !== undefined) ? forceVal : !shareSelectionMode;
+    
+    const checkboxes = document.querySelectorAll('.loc-share-checkbox');
+    const btn = document.getElementById('btn-share-portal');
+    
+    if (shareSelectionMode) {
+      checkboxes.forEach(cb => cb.classList.remove('hidden'));
+      btn.innerHTML = `<i data-lucide="x" class="w-4 h-4 text-rose-500"></i> ยกเลิกการเลือก`;
+      lucide.createIcons();
+    } else {
+      checkboxes.forEach(cb => {
+        cb.classList.add('hidden');
+        cb.checked = false;
+      });
+      btn.innerHTML = `<i data-lucide="share-2" class="w-4 h-4 text-brand-600"></i> เลือกแชร์หลายแห่ง`;
+      lucide.createIcons();
+      onShareCheckboxChange();
+    }
+  }
+
   function onShareCheckboxChange() {
     const checkboxes = document.querySelectorAll('.loc-share-checkbox:checked');
     const bar = document.getElementById('floating-share-bar');
@@ -275,9 +298,7 @@
   }
   
   function clearSelectedLocationsShare() {
-    const checkboxes = document.querySelectorAll('.loc-share-checkbox');
-    checkboxes.forEach(cb => cb.checked = false);
-    onShareCheckboxChange();
+    toggleShareSelectionMode(false);
   }
   
   function shareSelectedLocations() {
