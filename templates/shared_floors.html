@@ -1,7 +1,9 @@
 {% extends "base.html" %}
 
 {% block breadcrumbs %}
+{% if current_user %}
 <span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+{% endif %}
 <span class="font-semibold text-slate-700">{{ location.name }} / {{ building.name }} (ลิงก์แชร์ดูอย่างเดียว)</span>
 {% endblock %}
 

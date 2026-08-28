@@ -56,6 +56,7 @@
           </div>
         </a>
 
+        {% if current_user %}
         <nav class="hidden md:flex space-x-2">
           <a href="/" class="px-4 py-2 rounded-md text-sm font-medium transition {% if active_tab == 'dashboard' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} flex items-center gap-2">
             <i data-lucide="layout-dashboard" class="w-4 h-4"></i> แดชบอร์ด
@@ -63,12 +64,13 @@
           <a href="/acs" class="px-4 py-2 rounded-md text-sm font-medium transition {% if active_tab == 'acs' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} flex items-center gap-2">
             <i data-lucide="list" class="w-4 h-4"></i> รายการเครื่องปรับอากาศ
           </a>
-          {% if current_user and current_user.role == 'admin' %}
+          {% if current_user.role == 'admin' %}
           <a href="/admin/users" class="px-4 py-2 rounded-md text-sm font-medium transition {% if active_tab == 'users' %}bg-slate-800 text-white{% else %}text-slate-300 hover:bg-slate-800 hover:text-white{% endif %} flex items-center gap-2">
             <i data-lucide="users" class="w-4 h-4"></i> จัดการผู้ใช้งาน
           </a>
           {% endif %}
         </nav>
+        {% endif %}
 
         <!-- Demo / Server Mode & User Profile -->
         <div class="flex items-center gap-3">
@@ -136,9 +138,11 @@
   <section class="bg-white border-b border-slate-200 py-2.5 px-4 sm:px-6 lg:px-8 flex-none z-10">
     <div class="max-w-7xl mx-auto flex items-center justify-between text-sm flex-wrap gap-2">
       <div class="flex items-center space-x-2 text-slate-500 overflow-x-auto whitespace-nowrap">
+        {% if current_user %}
         <a href="/" class="hover:text-brand-500 flex items-center gap-1">
           <i data-lucide="home" class="w-4 h-4"></i> หน้าแรก
         </a>
+        {% endif %}
         {% block breadcrumbs %}{% endblock %}
       </div>
       <div class="hidden sm:flex items-center gap-2 text-xs text-slate-500">

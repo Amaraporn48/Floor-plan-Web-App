@@ -1,10 +1,17 @@
 {% extends "base.html" %}
 
 {% block breadcrumbs %}
+{% if not is_shared %}
 <span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
 <a href="/locations" class="hover:text-brand-500">สถานที่</a>
 <span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
 <a href="/locations/{{ location.id }}/buildings/{{ building.id }}" class="hover:text-brand-500">{{ location.name }} / {{ building.name }}</a>
+{% else %}
+{% if current_user %}
+<span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+{% endif %}
+<a href="/shared/{{ location.id }}/buildings/{{ building.id }}" class="hover:text-brand-500">{{ location.name }} / {{ building.name }}</a>
+{% endif %}
 <span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
 <span class="font-semibold text-slate-700">{{ floor.name }}</span>
 {% endblock %}
