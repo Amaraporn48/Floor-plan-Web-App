@@ -692,7 +692,7 @@ async function editACFromDrawer() {
     document.getElementById('form-serial').value = ac.serialNumber || '';
     
     // Type mapping fallback
-    const standardTypes = ["Wall Type", "Cassette Type", "Ceiling Type", "Duct Type", "Floor Type", "Package", "Split Type"];
+    const standardTypes = ["Wall Type", "Cassette Type", "Ceiling Type", "AHU", "FCU", "Floor Type", "Package", "Split Type"];
     if (standardTypes.includes(ac.type)) {
       document.getElementById('form-type').value = ac.type;
       document.getElementById('form-custom-type').value = '';
