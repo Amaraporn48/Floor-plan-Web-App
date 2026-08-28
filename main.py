@@ -832,6 +832,35 @@ def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, high
         "is_shared": False
     })
 
+# Shared / Public Locations Dashboard (No Login Required)
+@app.get("/shared", response_class=HTMLResponse)
+def page_shared_dashboard(request: Request, current_user: Optional[User] = Depends(get_optional_user), db: Session = Depends(get_db)):
+    locations = db.query(Location).all()
+    
+    location_list = []
+    for loc in locations:
+        bld_names = [b.name for b in loc.buildings]
+        
+        floors_count = sum(len(b.floors) for b in loc.buildings)
+        acs = db.query(AirConditioner).filter_by(location_id=loc.id).all()
+        acs_count = len(acs)
+        completed_count = sum(1 for ac in acs if ac.status == 'normal')
+        
+        location_list.append({
+            "id": loc.id,
+            "name": loc.name,
+            "buildings_list": ", ".join(bld_names) if bld_names else "ไม่มีอาคาร",
+            "floors_count": floors_count,
+            "acs_count": acs_count,
+            "completed_count": completed_count
+        })
+        
+    return templates.TemplateResponse(request, "shared_dashboard.html", {
+        "locations": location_list,
+        "active_tab": "locations",
+        "current_user": current_user
+    })
+
 # Shared / Public Location Hub (No Login Required)
 @app.get("/shared/{loc_id}", response_class=HTMLResponse)
 def page_shared_location(loc_id: str, db: Session = Depends(get_db)):

@@ -1,0 +1,86 @@
+{% extends "base.html" %}
+
+{% block breadcrumbs %}
+{% if current_user %}
+<span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
+{% endif %}
+<span class="font-semibold text-slate-700">รายชื่อโรงพยาบาลและสถานที่ทั้งหมด (ลิงก์แชร์ดูอย่างเดียว)</span>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="mb-8">
+    <h2 class="text-2xl font-bold text-slate-800">แผนผังเครื่องปรับอากาศ (โรงพยาบาลทั้งหมด)</h2>
+    <p class="text-slate-500 mt-1">กรุณาเลือกสถานที่/โรงพยาบาลด้านล่างเพื่อเข้าดูแบบแปลนพื้น</p>
+  </div>
+  
+  <!-- Locations List Header -->
+  <div class="mb-6 flex justify-between items-center flex-wrap gap-4">
+    <h3 class="text-lg font-bold text-slate-800">รายการสถานที่ทั้งหมด</h3>
+    <div class="relative w-full sm:w-64">
+      <input type="text" id="location-search-input" onkeyup="filterLocationCards()" placeholder="ค้นหาชื่อสถานที่..." class="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none focus:border-brand-500">
+      <i data-lucide="search" class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
+    </div>
+  </div>
+
+  <!-- Locations Grid -->
+  <div id="locations-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for loc in locations %}
+      <div class="location-card bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md hover:border-brand-500 transition cursor-pointer flex flex-col justify-between group" 
+           data-loc-id="{{ loc.id }}" 
+           data-loc-name="{{ loc.name }}"
+           onclick="navigateToLocation('{{ loc.id }}')">
+        <div>
+          <div class="flex items-start justify-between mb-4">
+            <div class="p-3 bg-brand-50 rounded-lg text-brand-800">
+              <i data-lucide="building-2" class="w-6 h-6"></i>
+            </div>
+            <div class="flex items-center gap-1.5 flex-none">
+              <span class="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded-full">{{ loc.floors_count }} ชั้นทั้งหมด</span>
+            </div>
+          </div>
+          <h4 class="text-lg font-bold text-slate-800">{{ loc.name }}</h4>
+          <p class="text-xs text-slate-500 mt-1">อาคาร: {{ loc.buildings_list }}</p>
+        </div>
+        
+        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+          <div>
+            <span class="text-[11px] text-slate-400 block uppercase font-bold">บันทึกเครื่องปรับอากาศ</span>
+            <span class="text-sm font-semibold text-slate-700">{{ loc.acs_count }} เครื่อง <span class="text-xs text-emerald-500 font-bold">(ปกติ {{ loc.completed_count }})</span></span>
+          </div>
+          <div class="text-brand-500 font-bold text-xs flex items-center gap-1">
+            เปิดดูชั้น <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="col-span-full text-center py-12 bg-white rounded-xl border border-dashed border-slate-300 text-slate-400">
+        <i data-lucide="building" class="w-12 h-12 mx-auto mb-3 text-slate-300"></i>
+        <h4 class="font-bold text-slate-600 mb-1">ยังไม่มีสถานที่ติดตั้งในระบบ</h4>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function navigateToLocation(locId) {
+    window.location.href = `/shared/${locId}`;
+  }
+  
+  function filterLocationCards() {
+    const input = document.getElementById('location-search-input').value.toLowerCase();
+    const cards = document.querySelectorAll('.location-card');
+    cards.forEach(card => {
+      const name = card.getAttribute('data-loc-name').toLowerCase();
+      if (name.includes(input)) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+</script>
+{% endblock %}
