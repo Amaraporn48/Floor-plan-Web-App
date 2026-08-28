@@ -187,7 +187,18 @@
             <div class="p-3 bg-brand-50 rounded-lg text-brand-800">
               <i data-lucide="building-2" class="w-6 h-6"></i>
             </div>
-            <span class="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded-full">{{ loc.floors_count }} ชั้นทั้งหมด</span>
+            <div class="flex items-center gap-1.5 flex-none">
+              {% if current_user and current_user.role == 'admin' %}
+              <!-- Edit/Delete Location -->
+              <button onclick="promptRenameLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="text-slate-400 hover:text-brand-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="แก้ไขชื่อสถานที่">
+                <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
+              </button>
+              <button onclick="confirmDeleteLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="text-slate-400 hover:text-rose-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="ลบสถานที่">
+                <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+              </button>
+              {% endif %}
+              <span class="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded-full">{{ loc.floors_count }} ชั้นทั้งหมด</span>
+            </div>
           </div>
           <h4 class="text-lg font-bold text-slate-800">{{ loc.name }}</h4>
           <p class="text-xs text-slate-500 mt-1">อาคาร: {{ loc.buildings_list }}</p>
@@ -384,6 +395,48 @@
     } catch (e) {
       console.error(e);
       alert("ค้นหาล้มเหลว");
+    }
+  }
+
+  // Rename location via API
+  async function promptRenameLocation(locId, oldName) {
+    const name = prompt(`กรุณาระบุชื่อสถานที่ใหม่สำหรับ "${oldName}":`, oldName);
+    if (!name || !name.trim() || name.trim() === oldName) return;
+    
+    try {
+      const res = await fetch(`/api/v1/locations/${locId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: name.trim() })
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert(err.detail || "บันทึกชื่อผิดพลาด");
+      }
+    } catch (e) {
+      alert("เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
+    }
+  }
+
+  // Delete location via API
+  async function confirmDeleteLocation(locId, name) {
+    const conf = confirm(`⚠️ คุณต้องการลบสถานที่ "${name}" หรือไม่?\n\nการลบนี้จะลบอาคาร แผนผังชั้น และแอร์ทั้งหมดในที่แห่งนี้อย่างถาวร!`);
+    if (!conf) return;
+    
+    try {
+      const res = await fetch(`/api/v1/locations/${locId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert(err.detail || "ลบไม่สำเร็จ");
+      }
+    } catch (e) {
+      alert("เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
     }
   }
 </script>
