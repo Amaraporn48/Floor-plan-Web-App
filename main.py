@@ -868,78 +868,8 @@ def page_acs(request: Request, current_user: User = Depends(get_current_user), d
 # Database Bulk Import/Sync (IndexedDB -> SQLite Migrator)
 @app.post("/api/v1/sync")
 def api_sync_data(payload: SyncPayload, db: Session = Depends(get_db)):
-    # Clear existing database tables to perform a clean import
-    db.query(MaintenanceLog).delete()
-    db.query(ACImage).delete()
-    db.query(AirConditioner).delete()
-    db.query(Floor).delete()
-    db.query(Building).delete()
-    db.query(Location).delete()
-    
-    # 1. Sync Locations and Buildings/Floors nested structure
-    for loc_data in payload.locations:
-        loc = Location(id=loc_data["id"], name=loc_data["name"])
-        db.add(loc)
-        
-        for bld_data in loc_data.get("buildings", []):
-            bld = Building(id=bld_data["id"], name=bld_data["name"], location_id=loc.id)
-            db.add(bld)
-            
-            for flr_data in bld_data.get("floors", []):
-                raw_flr_id = flr_data["id"]
-                unique_flr_id = raw_flr_id if "_" in raw_flr_id else f"{loc.id}_{bld.id}_{raw_flr_id}"
-                flr = Floor(
-                    id=unique_flr_id,
-                    name=flr_data["name"],
-                    building_id=bld.id,
-                    location_id=loc.id,
-                    image_data=flr_data.get("imageData") # indexeddb field name
-                )
-                db.add(flr)
-                
-    # 2. Sync Air Conditioners and related Logs/Images
-    for ac_data in payload.acs:
-        raw_flr_id = ac_data["floorId"]
-        unique_flr_id = raw_flr_id if "_" in raw_flr_id else f"{ac_data['locationId']}_{ac_data['buildingId']}_{raw_flr_id}"
-        ac = AirConditioner(
-            id=ac_data["id"],
-            name=ac_data["name"],
-            brand=ac_data.get("brand"),
-            model=ac_data.get("model"),
-            type=ac_data.get("type"),
-            system_type=ac_data.get("systemType"),
-            btu=ac_data.get("btu"),
-            status=ac_data.get("status", "normal"),
-            install_date=ac_data.get("installDate"),
-            serial_number=ac_data.get("serialNumber"),
-            note=ac_data.get("note"),
-            location_id=ac_data["locationId"],
-            building_id=ac_data["buildingId"],
-            floor_id=unique_flr_id,
-            room=ac_data.get("room"),
-            x=ac_data["x"],
-            y=ac_data["y"],
-            updated_at=ac_data.get("updatedAt"),
-            updated_by=ac_data.get("updatedBy")
-        )
-        db.add(ac)
-        
-        # Add Base64 images
-        for img_base64 in ac_data.get("images", []):
-            db.add(ACImage(ac_id=ac.id, image_data=img_base64))
-            
-        # Add Maintenance Logs history list
-        for log_data in ac_data.get("maintenanceHistory", []):
-            db.add(MaintenanceLog(
-                ac_id=ac.id,
-                date=log_data["date"],
-                note=log_data["note"],
-                technician=log_data["technician"],
-                status=log_data["status"]
-            ))
-            
-    db.commit()
-    return {"status": "success", "imported_locations": len(payload.locations), "imported_acs": len(payload.acs)}
+    # Migration has been completed. Wiping database is disabled to prevent data loss.
+    return {"status": "success", "message": "Migration disabled"}
 
 # Locations CRUD APIs
 @app.get("/api/v1/locations")

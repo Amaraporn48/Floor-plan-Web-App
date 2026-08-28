@@ -163,60 +163,6 @@
   <script>
     // Initialize Lucide Icons
     lucide.createIcons();
-    
-    // Auto-migration script from IndexedDB to Server Database
-    async function checkAndMigrateFromIndexedDB() {
-      try {
-        const dbRequest = indexedDB.open('ACManagementDB', 1);
-        dbRequest.onsuccess = function(event) {
-          const db = event.target.result;
-          if (!db.objectStoreNames.contains('store')) return;
-          
-          const transaction = db.transaction(['store'], 'readonly');
-          const store = transaction.objectStore('store');
-          const getRequest = store.get('app_state_data');
-          
-          getRequest.onsuccess = async function() {
-            const localData = getRequest.result;
-            if (!localData || !localData.locations || localData.locations.length === 0) return;
-            
-            try {
-              console.log('Migrating local database data to Cloud Server...');
-              const syncRes = await fetch('/api/v1/sync', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  locations: localData.locations,
-                  acs: localData.acs || []
-                })
-              });
-              
-              if (syncRes.ok) {
-                console.log('IndexedDB data migrated successfully! Refreshing page...');
-                // Clear local IndexedDB to avoid double migrates
-                db.close();
-                const deleteRequest = indexedDB.open('ACManagementDB', 1);
-                deleteRequest.onsuccess = function(ev) {
-                  const localDb = ev.target.result;
-                  const clearTx = localDb.transaction(['store'], 'readwrite');
-                  clearTx.objectStore('store').delete('app_state_data');
-                  window.location.reload();
-                };
-              }
-            } catch (e) {
-              console.error('Migration failed:', e);
-            }
-          };
-        };
-      } catch (err) {
-        console.warn("IndexedDB not supported or blocked, skipping migration check");
-      }
-    }
-    
-    // Run migration check on startup
-    window.addEventListener('DOMContentLoaded', () => {
-      checkAndMigrateFromIndexedDB();
-    });
   </script>
 
   <!-- Edit Profile & Password Modal -->
