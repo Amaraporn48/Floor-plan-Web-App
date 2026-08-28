@@ -76,9 +76,15 @@
 
         <!-- Demo / Server Mode & User Profile -->
         <div class="flex items-center gap-3">
-          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1">
+          {% if is_cloud_db %}
+          <span class="text-[10px] bg-emerald-500/20 text-emerald-400 font-bold px-2 py-0.5 rounded border border-emerald-500/30 flex items-center gap-1" title="เชื่อมต่อกับ Turso Cloud Database สำเร็จ">
             <span class="w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse"></span> Cloud DB Mode
           </span>
+          {% else %}
+          <span class="text-[10px] bg-amber-500/20 text-amber-400 font-bold px-2 py-0.5 rounded border border-amber-500/30 flex items-center gap-1 animate-pulse" title="⚠️ คำเตือน: ระบบรันด้วยฐานข้อมูลสำรอง SQLite ชั่วคราว (ข้อมูลจะรีเซ็ตเมื่อเซิร์ฟเวอร์รีสตาร์ท) กรุณาตั้งค่าสภาพแวดล้อมเพื่อเชื่อมต่อ Turso DB">
+            <span class="w-1.5 h-1.5 bg-amber-400 rounded-full animate-ping"></span> Local DB Mode (SQLite)
+          </span>
+          {% endif %}
           
           {% if current_user %}
           <div class="flex items-center gap-2 border-l border-slate-700 pl-3">

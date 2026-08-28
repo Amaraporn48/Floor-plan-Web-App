@@ -68,6 +68,9 @@ def get_floor_abbreviation(floor_name: str) -> str:
     return floor_name[:2].upper()
 
 templates.env.filters["floor_abbrev"] = get_floor_abbreviation
+templates.env.globals.update(
+    is_cloud_db=bool(os.environ.get("TURSO_DATABASE_URL") and os.environ.get("TURSO_AUTH_TOKEN"))
+)
 
 def seed_db(db: Session):
     if db.query(Location).count() > 0:
