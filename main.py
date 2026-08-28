@@ -72,17 +72,7 @@ templates.env.globals.update(
     is_cloud_db=bool(os.environ.get("TURSO_DATABASE_URL") and os.environ.get("TURSO_AUTH_TOKEN"))
 )
 
-@app.get("/api/v1/debug-db")
-def debug_database():
-    url = os.environ.get("TURSO_DATABASE_URL", "")
-    token = os.environ.get("TURSO_AUTH_TOKEN", "")
-    return {
-        "is_cloud_db_configured": bool(url and token),
-        "has_url": bool(url),
-        "has_token": bool(token),
-        "url_prefix": url[:15] if url else "",
-        "token_len": len(token) if token else 0
-    }
+
 
 def seed_db(db: Session):
     if db.query(Location).count() > 0:
@@ -298,6 +288,29 @@ def get_db():
         yield db
     finally:
         db.close()
+
+@app.get("/api/v1/debug-db")
+def debug_database(db: Session = Depends(get_db)):
+    url = os.environ.get("TURSO_DATABASE_URL", "")
+    token = os.environ.get("TURSO_AUTH_TOKEN", "")
+    
+    locations_list = []
+    floors_list = []
+    try:
+        locations_list = [{"id": loc.id, "name": loc.name} for loc in db.query(Location).all()]
+        floors_list = [{"id": flr.id, "name": flr.name, "image_len": len(flr.image_data) if flr.image_data else 0} for flr in db.query(Floor).all()]
+    except Exception as e:
+        locations_list = [f"Error: {str(e)}"]
+
+    return {
+        "is_cloud_db_configured": bool(url and token),
+        "has_url": bool(url),
+        "has_token": bool(token),
+        "url_prefix": url[:15] if url else "",
+        "token_len": len(token) if token else 0,
+        "database_locations": locations_list,
+        "database_floors": floors_list
+    }
 
 # User Session Dependency Injection (Cookie-Based JWT Auth)
 def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
