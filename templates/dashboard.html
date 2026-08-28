@@ -44,35 +44,38 @@
     </button>
   </div>
 
-  <!-- Stats Grid (Single Row, Accented Left-Borders) -->
-  <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-4 mb-8">
+  <!-- Stats Grid (Row 1: System Overview - 2 columns) -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
     <!-- Card Total Locations -->
-    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-600 flex items-center gap-3">
-      <div class="p-2 rounded-lg bg-blue-50 text-brand-600 flex-none">
-        <i data-lucide="building" class="w-5 h-5"></i>
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-600 flex items-center gap-4">
+      <div class="p-3 rounded-lg bg-blue-50 text-brand-600 flex-none">
+        <i data-lucide="building" class="w-6 h-6"></i>
       </div>
       <div class="min-w-0">
-        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">สถานที่ทั้งหมด</div>
-        <div class="flex items-baseline gap-1">
-          <span id="stats-loc-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.locations_count }}</span>
-          <span id="stats-loc-lbl" class="text-[10px] text-slate-500 font-bold">รพ.</span>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">สถานที่ปฏิบัติงานทั้งหมด</div>
+        <div class="flex items-baseline gap-1 mt-0.5">
+          <span id="stats-loc-val" class="text-2xl font-black text-slate-800">{{ stats.locations_count }}</span>
+          <span id="stats-loc-lbl" class="text-xs text-slate-500 font-bold">โรงพยาบาล</span>
         </div>
-        <div id="stats-loc-sub" class="text-[9px] text-slate-400 truncate">ระบบ Cloud Database</div>
+        <div id="stats-loc-sub" class="text-xs text-slate-400">ระบบคลาวด์คีย์ข้อมูลร่วมกัน (Turso DB)</div>
       </div>
     </div>
 
     <!-- Card Total ACs -->
-    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-slate-500 flex items-center gap-3">
-      <div class="p-2 rounded-lg bg-slate-50 text-slate-500 flex-none">
-        <i data-lucide="pocket" class="w-5 h-5"></i>
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-slate-500 flex items-center gap-4">
+      <div class="p-3 rounded-lg bg-slate-50 text-slate-500 flex-none">
+        <i data-lucide="pocket" class="w-6 h-6"></i>
       </div>
       <div class="min-w-0">
-        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">แอร์ทั้งหมด</div>
-        <div id="stats-ac-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.acs_count }}</div>
-        <div class="text-[9px] text-slate-400">เครื่องติดตั้ง</div>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">เครื่องปรับอากาศสะสมทั้งหมด</div>
+        <div id="stats-ac-val" class="text-2xl font-black text-slate-800 mt-0.5">{{ stats.acs_count }}</div>
+        <div class="text-xs text-slate-400">เครื่องปรับอากาศที่บันทึกพิกัดไว้ในระบบ</div>
       </div>
     </div>
+  </div>
 
+  <!-- Stats Grid (Row 2: AC Health Status - 5 columns) -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
     <!-- Card Active -->
     <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500 flex items-center gap-3">
       <div class="p-2 rounded-lg bg-emerald-50 text-emerald-600 flex-none">
@@ -82,9 +85,9 @@
         </span>
       </div>
       <div class="min-w-0">
-        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ใช้งานปกติ</div>
-        <div id="stats-normal-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.normal_count }}</div>
-        <div class="text-[9px] text-emerald-600 font-medium">ระบบทำงานได้ดี</div>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">ใช้งานปกติ</div>
+        <div id="stats-normal-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.normal_count }}</div>
+        <div class="text-[10px] text-emerald-600 font-medium truncate">ระบบทำงานได้ดี</div>
       </div>
     </div>
 
@@ -97,9 +100,9 @@
         </span>
       </div>
       <div class="min-w-0">
-        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ต้องตรวจสอบ</div>
-        <div id="stats-check-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.check_count }}</div>
-        <div class="text-[9px] text-amber-600 font-medium">รอดำเนินการ</div>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">ต้องตรวจสอบ</div>
+        <div id="stats-check-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.check_count }}</div>
+        <div class="text-[10px] text-amber-600 font-medium truncate">รอดำเนินการเช็ค</div>
       </div>
     </div>
 
@@ -112,9 +115,9 @@
         </span>
       </div>
       <div class="min-w-0">
-        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">รอซ่อม / ต้องซ่อม</div>
-        <div id="stats-repair-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.repair_count }}</div>
-        <div class="text-[9px] text-red-600 font-medium">แก้ไขหน้างาน</div>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">รอซ่อม / ต้องซ่อม</div>
+        <div id="stats-repair-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.repair_count }}</div>
+        <div class="text-[10px] text-red-600 font-medium truncate">แก้ไขปัญหาหน้างาน</div>
       </div>
     </div>
 
@@ -127,9 +130,9 @@
         </span>
       </div>
       <div class="min-w-0">
-        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ชำรุด / เสีย</div>
-        <div id="stats-broken-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.broken_count }}</div>
-        <div class="text-[9px] text-[#8b4513] font-medium">ต้องเสนออะไหล่</div>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">ชำรุด / เสีย</div>
+        <div id="stats-broken-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.broken_count }}</div>
+        <div class="text-[10px] text-[#8b4513] font-medium truncate">ต้องเสนออะไหล่</div>
       </div>
     </div>
 
@@ -141,9 +144,9 @@
         </span>
       </div>
       <div class="min-w-0">
-        <div class="text-[10px] font-bold text-slate-400 uppercase tracking-wider">ไม่ได้ใช้งาน</div>
-        <div id="stats-inactive-val" class="text-xl font-black text-slate-800 leading-tight">{{ stats.inactive_count }}</div>
-        <div class="text-[9px] text-slate-400">ปิดตัวชั่วคราว</div>
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">ไม่ได้ใช้งาน</div>
+        <div id="stats-inactive-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.inactive_count }}</div>
+        <div class="text-[10px] text-slate-400 truncate">ปิดตัวชั่วคราว</div>
       </div>
     </div>
   </div>
