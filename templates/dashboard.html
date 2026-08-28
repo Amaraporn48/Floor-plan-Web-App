@@ -178,7 +178,7 @@
   <!-- Locations Grid -->
   <div id="locations-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
     {% for loc in locations %}
-      <div class="location-card bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md hover:border-brand-500 transition cursor-pointer flex flex-col justify-between" 
+      <div class="location-card bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md hover:border-brand-500 transition cursor-pointer flex flex-col justify-between group" 
            data-loc-id="{{ loc.id }}" 
            data-loc-name="{{ loc.name }}"
            onclick="navigateToLocation('{{ loc.id }}')">
@@ -190,10 +190,10 @@
             <div class="flex items-center gap-1.5 flex-none">
               {% if current_user and current_user.role == 'admin' %}
               <!-- Edit/Delete Location -->
-              <button onclick="promptRenameLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="text-slate-400 hover:text-brand-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="แก้ไขชื่อสถานที่">
+              <button onclick="promptRenameLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="แก้ไขชื่อสถานที่">
                 <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
               </button>
-              <button onclick="confirmDeleteLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="text-slate-400 hover:text-rose-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="ลบสถานที่">
+              <button onclick="confirmDeleteLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="ลบสถานที่">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
               </button>
               {% endif %}
