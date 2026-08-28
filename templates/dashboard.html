@@ -196,9 +196,6 @@
               <i data-lucide="building-2" class="w-6 h-6"></i>
             </div>
             <div class="flex items-center gap-1.5 flex-none">
-              {% if current_user %}
-              <input type="checkbox" value="{{ loc.id }}" data-name="{{ loc.name }}" class="loc-share-checkbox w-4 h-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer mr-0.5" onclick="event.stopPropagation(); onShareCheckboxChange();" title="เลือกสถานที่นี้เพื่อแชร์หลายแห่งพร้อมกัน">
-              {% endif %}
               <!-- Share Location Link -->
               <button onclick="shareLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="แชร์ลิงก์ดูอย่างเดียว">
                 <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
@@ -215,7 +212,12 @@
               <span class="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded-full">{{ loc.floors_count }} ชั้นทั้งหมด</span>
             </div>
           </div>
-          <h4 class="text-lg font-bold text-slate-800">{{ loc.name }}</h4>
+          <h4 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+            {% if current_user %}
+            <input type="checkbox" value="{{ loc.id }}" data-name="{{ loc.name }}" class="loc-share-checkbox w-4.5 h-4.5 rounded border-slate-300 text-brand-600 focus:ring-brand-500 transition cursor-pointer flex-none" onclick="event.stopPropagation(); onShareCheckboxChange();" title="เลือกสถานที่นี้เพื่อแชร์หลายแห่งพร้อมกัน">
+            {% endif %}
+            <span>{{ loc.name }}</span>
+          </h4>
           <p class="text-xs text-slate-500 mt-1">อาคาร: {{ loc.buildings_list }}</p>
         </div>
         
