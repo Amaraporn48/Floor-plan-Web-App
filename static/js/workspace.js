@@ -258,8 +258,8 @@ function renderMarkers() {
       });
     }
     
-    // Configure dragging on this marker
-    if (panZoomInstance) {
+    // Configure dragging on this marker (disabled in shared/read-only mode)
+    if (panZoomInstance && !window.isShared) {
       panZoomInstance.makeMarkerDraggable(marker, (finalX, finalY) => {
         onMarkerDragEnd(ac.id, finalX, finalY);
       });
@@ -467,17 +467,21 @@ function renderMaintenanceHistoryList(ac) {
     if (log.status === 'broken') { label = 'ชำรุด'; labelClass = 'bg-[#f5e6d3] text-[#8b4513]'; }
     if (log.status === 'inactive') { label = 'ไม่ได้ใช้งาน'; labelClass = 'bg-slate-200 text-slate-700'; }
 
-    item.innerHTML = `
-      <div class="flex items-center justify-between font-bold text-slate-500">
-        <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateTime(log.date)}</span>
-        <div class="flex items-center gap-1.5">
-          <span class="px-2 py-0.5 rounded-full text-[9px] ${labelClass}">${label}</span>
+    const controlsHtml = !window.isShared ? `
           <button onclick="startEditMaintenanceLog('${ac.id}', ${log.id}, \`${escapeHtml(log.note)}\`, '${log.status}', \`${escapeHtml(log.technician)}\`)" class="text-slate-400 hover:text-brand-500 transition p-0.5" title="แก้ไขประวัติ">
             <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
           </button>
           <button onclick="deleteMaintenanceLog('${ac.id}', ${log.id})" class="text-slate-400 hover:text-rose-500 transition p-0.5" title="ลบประวัติ">
             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
           </button>
+    ` : '';
+
+    item.innerHTML = `
+      <div class="flex items-center justify-between font-bold text-slate-500">
+        <span class="flex items-center gap-1"><i data-lucide="calendar" class="w-3.5 h-3.5"></i> ${formatDateTime(log.date)}</span>
+        <div class="flex items-center gap-1.5">
+          <span class="px-2 py-0.5 rounded-full text-[9px] ${labelClass}">${label}</span>
+          ${controlsHtml}
         </div>
       </div>
       <div class="text-slate-800 font-medium bg-white p-2 rounded border border-slate-100 whitespace-pre-wrap">${log.note}</div>
@@ -1207,17 +1211,21 @@ function renderHistoryModalList() {
     if (log.status === 'broken') { label = 'ชำรุด'; labelClass = 'bg-[#f5e6d3] text-[#8b4513] border-[#ebd4bb]'; }
     if (log.status === 'inactive') { label = 'ไม่ได้ใช้งาน'; labelClass = 'bg-slate-100 text-slate-700 border-slate-200'; }
 
-    item.innerHTML = `
-      <div class="flex items-center justify-between font-bold text-slate-500">
-        <span class="flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> ${formatDateTime(log.date)}</span>
-        <div class="flex items-center gap-1.5">
-          <span class="px-2 py-0.5 rounded-full text-[10px] border ${labelClass}">${label}</span>
+    const controlsHtml = !window.isShared ? `
           <button onclick="startEditFromModal(${log.id}, \`${escapeHtml(log.note)}\`, '${log.status}', \`${escapeHtml(log.technician)}\`)" class="text-slate-400 hover:text-brand-500 transition p-1 bg-slate-50 hover:bg-slate-100 rounded" title="แก้ไขประวัติ">
             <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
           </button>
           <button onclick="deleteFromModal(${log.id})" class="text-slate-400 hover:text-rose-500 transition p-1 bg-slate-50 hover:bg-rose-50 rounded" title="ลบประวัติ">
             <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
           </button>
+    ` : '';
+
+    item.innerHTML = `
+      <div class="flex items-center justify-between font-bold text-slate-500">
+        <span class="flex items-center gap-1.5"><i data-lucide="calendar" class="w-3.5 h-3.5 text-slate-400"></i> ${formatDateTime(log.date)}</span>
+        <div class="flex items-center gap-1.5">
+          <span class="px-2 py-0.5 rounded-full text-[10px] border ${labelClass}">${label}</span>
+          ${controlsHtml}
         </div>
       </div>
       <div class="text-slate-800 font-medium bg-slate-50/50 p-2.5 rounded-lg border border-slate-100 whitespace-pre-wrap leading-relaxed">${log.note}</div>

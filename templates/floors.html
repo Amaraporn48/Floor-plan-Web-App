@@ -18,11 +18,16 @@
         <h2 class="text-2xl font-bold text-slate-800">เลือกชั้นอาคาร ({{ building.name }})</h2>
         <p class="text-slate-500 text-sm mt-0.5">กรุณาคลิกเลือกชั้นเพื่อเปิดหน้าจอแผนภาพ Floor Plan</p>
       </div>
-      {% if current_user.role == 'admin' %}
-      <button onclick="promptAddNewFloor()" class="px-3.5 py-2 bg-brand-800 hover:bg-slate-700 text-white rounded text-xs font-bold transition flex items-center gap-1 shadow-sm">
-        <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มชั้น / แปลนอาคาร
-      </button>
-      {% endif %}
+      <div class="flex items-center gap-2">
+        <button onclick="shareFloorsPage()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="แชร์ลิงก์ดูอย่างเดียวของตึกนี้">
+          <i data-lucide="share-2" class="w-4 h-4 text-brand-600"></i> แชร์ลิงก์ดูอย่างเดียว
+        </button>
+        {% if current_user.role == 'admin' %}
+        <button onclick="promptAddNewFloor()" class="px-3.5 py-2 bg-brand-800 hover:bg-slate-700 text-white rounded text-xs font-bold transition flex items-center gap-1 shadow-sm">
+          <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มชั้น / แปลนอาคาร
+        </button>
+        {% endif %}
+      </div>
     </div>
   </div>
 
@@ -101,6 +106,15 @@
 
 {% block scripts %}
 <script>
+  function shareFloorsPage() {
+    const shareUrl = `${window.location.origin}/shared/{{ location.id }}/buildings/{{ building.id }}`;
+    navigator.clipboard.writeText(shareUrl).then(() => {
+      alert(`คัดลอกลิงก์สำหรับแชร์ดูอย่างเดียวของตึกนี้เรียบร้อยแล้ว!\nคนนอกสามารถกดเข้าดูได้โดยไม่ต้องเข้าสู่ระบบ\n\nลิงก์: ${shareUrl}`);
+    }).catch(err => {
+      prompt(`คัดลอกลิงก์สำหรับแชร์ดูอย่างเดียวของตึกนี้:`, shareUrl);
+    });
+  }
+
   function navigateToWorkspace(flrId) {
     window.location.href = `/workspace/{{ location.id }}/{{ building.id }}/${flrId}`;
   }

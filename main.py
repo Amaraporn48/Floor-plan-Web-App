@@ -360,6 +360,20 @@ def get_current_user(request: Request, db: Session = Depends(get_db)) -> User:
         
     return user
 
+def get_optional_user(request: Request, db: Session = Depends(get_db)) -> Optional[User]:
+    token = request.cookies.get("access_token")
+    if not token:
+        auth_header = request.headers.get("Authorization")
+        if auth_header and auth_header.startswith("Bearer "):
+            token = auth_header.split(" ")[1]
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    user_id = payload.get("sub")
+    return db.query(User).filter_by(id=user_id).first()
+
 def get_current_admin(current_user: User = Depends(get_current_user)) -> User:
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Admin permissions required")
@@ -814,7 +828,87 @@ def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, high
         "initial_acs": ac_list,
         "highlight_ac_id": highlight or "",
         "active_tab": "locations",
+        "current_user": current_user,
+        "is_shared": False
+    })
+
+# Shared / Public Location Hub (No Login Required)
+@app.get("/shared/{loc_id}", response_class=HTMLResponse)
+def page_shared_location(loc_id: str, db: Session = Depends(get_db)):
+    loc = db.query(Location).filter_by(id=loc_id).first()
+    if not loc:
+        raise HTTPException(status_code=404, detail="สถานที่ระบุไม่ถูกต้อง")
+    if loc.buildings:
+        return RedirectResponse(url=f"/shared/{loc_id}/buildings/{loc.buildings[0].id}")
+    else:
+        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลอาคารในสถานที่นี้")
+
+# Shared / Public Floors List Page (No Login Required)
+@app.get("/shared/{loc_id}/buildings/{bld_id}", response_class=HTMLResponse)
+def page_shared_floors(request: Request, loc_id: str, bld_id: str, current_user: Optional[User] = Depends(get_optional_user), db: Session = Depends(get_db)):
+    loc = db.query(Location).filter_by(id=loc_id).first()
+    bld = db.query(Building).filter_by(id=bld_id, location_id=loc_id).first()
+    if not loc or not bld:
+        raise HTTPException(status_code=404, detail="สถานที่หรืออาคารไม่ถูกต้อง")
+
+    query = (
+        db.query(Floor.id, Floor.name, (Floor.image_data != None).label("has_blueprint"))
+        .filter_by(location_id=loc_id, building_id=bld_id)
+    )
+    floors = query.all()
+    
+    from sqlalchemy import func
+    ac_counts_raw = (
+        db.query(AirConditioner.floor_id, func.count(AirConditioner.id))
+        .filter_by(location_id=loc_id, building_id=bld_id)
+        .group_by(AirConditioner.floor_id)
+        .all()
+    )
+    ac_counts = {floor_id: count for floor_id, count in ac_counts_raw}
+
+    floor_list = []
+    for fl in floors:
+        floor_list.append({
+            "id": fl.id,
+            "name": fl.name,
+            "ac_count": ac_counts.get(fl.id, 0),
+            "has_blueprint": fl.has_blueprint
+        })
+
+    return templates.TemplateResponse(request, "shared_floors.html", {
+        "location": loc,
+        "building": bld,
+        "floors": floor_list,
+        "active_tab": "locations",
         "current_user": current_user
+    })
+
+# Shared / Public Workspace Route (No Login Required)
+@app.get("/shared/workspace/{loc_id}/{bld_id}/{flr_id}", response_class=HTMLResponse)
+def page_shared_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, highlight: Optional[str] = None, current_user: Optional[User] = Depends(get_optional_user), db: Session = Depends(get_db)):
+    loc = db.query(Location).filter_by(id=loc_id).first()
+    bld = db.query(Building).filter_by(id=bld_id, location_id=loc_id).first()
+    
+    flr = db.query(Floor).filter_by(id=flr_id, building_id=bld_id, location_id=loc_id).first()
+    if not flr:
+        unique_flr_id = f"{loc_id}_{bld_id}_{flr_id}"
+        flr = db.query(Floor).filter_by(id=unique_flr_id, building_id=bld_id, location_id=loc_id).first()
+    
+    if not loc or not bld or not flr:
+        raise HTTPException(status_code=404, detail="แผนผังชั้นที่ระบุไม่ถูกต้อง")
+
+    acs = db.query(AirConditioner).filter_by(location_id=loc_id, building_id=bld_id, floor_id=flr.id).all()
+    ac_list = [ac_to_dict(ac) for ac in acs]
+        
+    return templates.TemplateResponse(request, "workspace.html", {
+        "location": loc,
+        "building": bld,
+        "floor": flr,
+        "initial_acs": ac_list,
+        "highlight_ac_id": highlight or "",
+        "active_tab": "locations",
+        "current_user": current_user,
+        "is_shared": True
     })
 
 # Direct QR Code Route (Public - No Login Required)
@@ -999,20 +1093,29 @@ def delete_floor(loc_id: str, bld_id: str, flr_id: str, current_user: User = Dep
 
 # Air Conditioners CRUD APIs
 @app.get("/api/v1/acs")
-def get_acs(locationId: Optional[str] = None, buildingId: Optional[str] = None, floorId: Optional[str] = None, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_acs(locationId: Optional[str] = None, buildingId: Optional[str] = None, floorId: Optional[str] = None, current_user: Optional[User] = Depends(get_optional_user), db: Session = Depends(get_db)):
     query = db.query(AirConditioner)
     
-    if current_user.role != "admin":
-        assigned_ids = [assign.floor_id for assign in current_user.assignments]
-        if floorId:
-            if floorId not in assigned_ids:
-                raise HTTPException(status_code=403, detail="คุณไม่มีสิทธิ์เข้าถึงชั้นข้อมูลนี้")
-            query = query.filter_by(floor_id=floorId)
+    if current_user:
+        if current_user.role != "admin":
+            assigned_ids = [assign.floor_id for assign in current_user.assignments]
+            if floorId:
+                if floorId not in assigned_ids:
+                    raise HTTPException(status_code=403, detail="คุณไม่มีสิทธิ์เข้าถึงชั้นข้อมูลนี้")
+                query = query.filter_by(floor_id=floorId)
+            else:
+                query = query.filter(AirConditioner.floor_id.in_(assigned_ids)) if assigned_ids else query.filter(False)
+                if locationId:
+                    query = query.filter_by(location_id=locationId)
         else:
-            query = query.filter(AirConditioner.floor_id.in_(assigned_ids)) if assigned_ids else query.filter(False)
+            if floorId:
+                query = query.filter_by(floor_id=floorId)
             if locationId:
                 query = query.filter_by(location_id=locationId)
     else:
+        # Unauthenticated guest viewers must filter by location or floor (prevents mass scraping)
+        if not locationId and not floorId:
+            raise HTTPException(status_code=401, detail="จำเป็นต้องเข้าสู่ระบบสำหรับการดึงข้อมูลทั้งหมด")
         if floorId:
             query = query.filter_by(floor_id=floorId)
         if locationId:
@@ -1024,11 +1127,12 @@ def get_acs(locationId: Optional[str] = None, buildingId: Optional[str] = None, 
     return [ac_to_dict(ac) for ac in query.all()]
 
 @app.get("/api/v1/acs/{ac_id}")
-def get_single_ac(ac_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def get_single_ac(ac_id: str, current_user: Optional[User] = Depends(get_optional_user), db: Session = Depends(get_db)):
     ac = db.query(AirConditioner).filter_by(id=ac_id).first()
     if not ac:
         raise HTTPException(status_code=404, detail="Air conditioner not found")
-    check_floor_access(current_user, ac.floor_id, db)
+    if current_user:
+        check_floor_access(current_user, ac.floor_id, db)
     return ac_to_dict(ac)
 
 @app.post("/api/v1/acs")
