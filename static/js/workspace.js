@@ -103,11 +103,15 @@ function toggleMapSidebar() {
     if (window.innerWidth < 1024) {
       sidebar.classList.add('absolute', 'inset-y-0', 'left-0', 'z-30', 'shadow-xl');
     }
-    if (btnOpen) btnOpen.classList.add('hidden');
+    if (btnOpen) {
+      btnOpen.classList.add('hidden', 'lg:hidden');
+    }
   } else {
     sidebar.classList.add('hidden');
     sidebar.classList.remove('flex', 'lg:flex', 'absolute', 'inset-y-0', 'left-0', 'z-30', 'shadow-xl');
-    if (btnOpen) btnOpen.classList.remove('hidden');
+    if (btnOpen) {
+      btnOpen.classList.remove('hidden', 'lg:hidden');
+    }
   }
   
   if (panZoomInstance) {
