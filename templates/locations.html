@@ -35,13 +35,15 @@
               <i data-lucide="building-2" class="w-6 h-6"></i>
             </div>
             <div class="flex items-center gap-1.5 flex-none">
-              <!-- Edit/Delete Location -->
-              <button onclick="promptRenameLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand-600 transition p-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded" title="แก้ไขชื่อสถานที่">
+              {% if current_user and current_user.role == 'admin' %}
+              <!-- Edit/Delete Location (Visible always to admin for both mobile and desktop) -->
+              <button onclick="promptRenameLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="text-slate-400 hover:text-brand-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="แก้ไขชื่อสถานที่">
                 <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
               </button>
-              <button onclick="confirmDeleteLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition p-1 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded" title="ลบสถานที่">
+              <button onclick="confirmDeleteLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="text-slate-400 hover:text-rose-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="ลบสถานที่">
                 <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
               </button>
+              {% endif %}
               <span class="text-xs bg-slate-100 text-slate-600 font-bold px-2 py-1 rounded-full">{{ loc.floors_count }} ชั้นทั้งหมด</span>
             </div>
           </div>
