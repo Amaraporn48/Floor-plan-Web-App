@@ -72,6 +72,18 @@ templates.env.globals.update(
     is_cloud_db=bool(os.environ.get("TURSO_DATABASE_URL") and os.environ.get("TURSO_AUTH_TOKEN"))
 )
 
+@app.get("/api/v1/debug-db")
+def debug_database():
+    url = os.environ.get("TURSO_DATABASE_URL", "")
+    token = os.environ.get("TURSO_AUTH_TOKEN", "")
+    return {
+        "is_cloud_db_configured": bool(url and token),
+        "has_url": bool(url),
+        "has_token": bool(token),
+        "url_prefix": url[:15] if url else "",
+        "token_len": len(token) if token else 0
+    }
+
 def seed_db(db: Session):
     if db.query(Location).count() > 0:
         return
