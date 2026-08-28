@@ -226,7 +226,25 @@
 
     filtered.forEach(ac => {
       const tr = document.createElement('tr');
-      tr.className = "hover:bg-slate-50 transition duration-150";
+      
+      // Calculate age and decide if it is older than 10 years
+      let isOldAC = false;
+      if (ac.installDate) {
+        const installDateObj = new Date(ac.installDate);
+        if (!isNaN(installDateObj.getTime())) {
+          const tenYearsAgo = new Date();
+          tenYearsAgo.setFullYear(tenYearsAgo.getFullYear() - 10);
+          if (installDateObj <= tenYearsAgo) {
+            isOldAC = true;
+          }
+        }
+      }
+
+      if (isOldAC) {
+        tr.className = "bg-rose-50/75 hover:bg-rose-100/80 transition duration-150";
+      } else {
+        tr.className = "hover:bg-slate-50 transition duration-150";
+      }
 
       // Status pill
       let statusLabel = '<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">ใช้งานปกติ</span>';
@@ -242,7 +260,10 @@
       const locationPath = `${loc?.name || '-'} / ${bld?.name || '-'} / ${flr?.name || '-'}`;
 
       tr.innerHTML = `
-        <td class="px-6 py-4 font-bold text-brand-900">${ac.name}</td>
+        <td class="px-6 py-4 font-bold text-brand-900 flex items-center gap-1.5">
+          <span>${ac.name}</span>
+          ${isOldAC ? `<span class="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-bold bg-rose-600 text-white animate-pulse" title="อายุใช้งานเกิน 10 ปี"><i data-lucide="clock" class="w-3 h-3"></i>10ปี+</span>` : ''}
+        </td>
         <td class="px-6 py-4">
           <div class="font-medium text-slate-800">${ac.room || '-'}</div>
           <div class="text-xs text-slate-400 mt-0.5">${locationPath}</div>
