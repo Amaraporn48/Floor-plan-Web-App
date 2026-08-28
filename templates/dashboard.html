@@ -192,8 +192,8 @@
             </div>
             <div class="flex items-center gap-1.5 flex-none">
               <!-- Share Location Link -->
-              <button onclick="shareLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="text-slate-400 hover:text-brand-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="แชร์ลิงก์ดูอย่างเดียว">
-                <i data-lucide="share-2" class="w-3.5 h-3.5 text-brand-600"></i>
+              <button onclick="shareLocation('{{ loc.id }}', '{{ loc.name }}'); event.stopPropagation();" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded flex items-center justify-center" title="แชร์ลิงก์ดูอย่างเดียว">
+                <i data-lucide="share-2" class="w-3.5 h-3.5"></i>
               </button>
               {% if current_user and current_user.role == 'admin' %}
               <!-- Edit/Delete Location -->
