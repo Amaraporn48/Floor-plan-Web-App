@@ -1,24 +1,236 @@
 {% extends "base.html" %}
 
 {% block breadcrumbs %}
-{% if current_user %}
+{% if is_single_location and single_location %}
+<a href="/shared" class="hover:text-brand-500 flex items-center gap-1">
+  <i data-lucide="building" class="w-4 h-4"></i> ทุกสถานที่
+</a>
 <span class="text-slate-400"><i data-lucide="chevron-right" class="w-4 h-4"></i></span>
-{% endif %}
+<span class="font-semibold text-slate-700">{{ single_location.name }} (แผงควบคุมดูอย่างเดียว)</span>
+{% else %}
 <span class="font-semibold text-slate-700">รายชื่อโรงพยาบาลและสถานที่ทั้งหมด (ลิงก์แชร์ดูอย่างเดียว)</span>
+{% endif %}
 {% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-  <!-- Header -->
+  <!-- Title -->
   <div class="mb-8">
+    {% if is_single_location and single_location %}
+    <h2 class="text-2xl font-bold text-slate-800">แผงควบคุม {{ single_location.name }}</h2>
+    <p class="text-slate-500 mt-1">สรุปสถานะการทำงานและการบำรุงรักษาเครื่องปรับอากาศ (ลิงก์แชร์ดูอย่างเดียว)</p>
+    {% else %}
     <h2 class="text-2xl font-bold text-slate-800">แผนผังเครื่องปรับอากาศ (โรงพยาบาลทั้งหมด)</h2>
     <p class="text-slate-500 mt-1">กรุณาเลือกสถานที่/โรงพยาบาลด้านล่างเพื่อเข้าดูแบบแปลนพื้น</p>
+    {% endif %}
   </div>
-  
-  <!-- Locations List Header -->
-  <div class="mb-6 flex justify-between items-center flex-wrap gap-4">
+
+  {% if not is_single_location and locations|length > 1 %}
+  <!-- Dashboard Location Filter Dropdown -->
+  <div class="mb-8 bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div class="flex items-center gap-3">
+      <label for="dashboard-location-dropdown" class="text-sm font-bold text-slate-700 whitespace-nowrap">โรงพยาบาล/สถานที่:</label>
+      <select id="dashboard-location-dropdown" onchange="onDashboardLocationFilterChange()" class="border border-slate-300 rounded-lg p-2 bg-white text-slate-800 focus:outline-none focus:border-brand-500 text-sm min-w-[240px]">
+        <option value="" 
+                data-buildings="{{ stats.locations_count }}" 
+                data-floors="0" 
+                data-acs="{{ stats.acs_count }}"
+                data-normal="{{ stats.normal_count }}"
+                data-check="{{ stats.check_count }}"
+                data-repair="{{ stats.repair_count }}"
+                data-broken="{{ stats.broken_count }}"
+                data-inactive="{{ stats.inactive_count }}">ทุกสถานที่ (รวมทั้งหมด)</option>
+        {% for loc in locations %}
+          <option value="{{ loc.id }}" 
+                  data-buildings="{{ loc.buildings | length }}" 
+                  data-floors="{{ loc.floors_count }}"
+                  data-acs="{{ loc.acs_count }}"
+                  data-normal="{{ loc.completed_count }}"
+                  data-check="{{ loc.check_count }}"
+                  data-repair="{{ loc.repair_count }}"
+                  data-broken="{{ loc.broken_count }}"
+                  data-inactive="{{ loc.inactive_count }}">{{ loc.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+  </div>
+  {% endif %}
+
+  <!-- Stats Grid (Row 1: System / Location Overview - 2 columns) -->
+  <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+    <!-- Card Total Locations / Buildings -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-600 flex items-center gap-4">
+      <div class="p-3 rounded-lg bg-blue-50 text-brand-600 flex-none">
+        <i data-lucide="building" class="w-6 h-6"></i>
+      </div>
+      <div class="min-w-0">
+        {% if is_single_location and single_location %}
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">สถานที่ปฏิบัติงาน</div>
+        <div class="flex items-baseline gap-1 mt-0.5">
+          <span id="stats-loc-val" class="text-2xl font-black text-slate-800">{{ single_location.buildings | length }}</span>
+          <span id="stats-loc-lbl" class="text-xs text-slate-500 font-bold">อาคาร</span>
+        </div>
+        <div id="stats-loc-sub" class="text-xs text-slate-400">{{ single_location.name }} ({{ single_location.floors_count }} ชั้นทั้งหมด)</div>
+        {% else %}
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">สถานที่ปฏิบัติงานทั้งหมด</div>
+        <div class="flex items-baseline gap-1 mt-0.5">
+          <span id="stats-loc-val" class="text-2xl font-black text-slate-800">{{ stats.locations_count }}</span>
+          <span id="stats-loc-lbl" class="text-xs text-slate-500 font-bold">โรงพยาบาล</span>
+        </div>
+        <div id="stats-loc-sub" class="text-xs text-slate-400">ระบบคลาวด์คีย์ข้อมูลร่วมกัน (Turso DB)</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- Card Total ACs -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-slate-500 flex items-center gap-4">
+      <div class="p-3 rounded-lg bg-slate-50 text-slate-500 flex-none">
+        <i data-lucide="pocket" class="w-6 h-6"></i>
+      </div>
+      <div class="min-w-0">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">เครื่องปรับอากาศสะสมทั้งหมด</div>
+        <div id="stats-ac-val" class="text-2xl font-black text-slate-800 mt-0.5">{{ stats.acs_count }}</div>
+        <div class="text-xs text-slate-400">เครื่องปรับอากาศที่บันทึกพิกัดไว้ในระบบ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Grid (Row 2: AC Health Status - 5 columns) -->
+  <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 mb-8">
+    <!-- Normal -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-emerald-500 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-emerald-50 text-emerald-600 flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+        </span>
+      </div>
+      <div class="min-w-0">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">ใช้งานปกติ</div>
+        <div id="stats-normal-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.normal_count }}</div>
+        <div class="text-[10px] text-emerald-600 font-medium truncate">ระบบทำงานได้ดี</div>
+      </div>
+    </div>
+
+    <!-- Check -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-amber-500 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-amber-50 text-amber-600 flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-amber-500"></span>
+        </span>
+      </div>
+      <div class="min-w-0">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">ต้องตรวจสอบ</div>
+        <div id="stats-check-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.check_count }}</div>
+        <div class="text-[10px] text-amber-600 font-medium truncate">รอดำเนินการเช็ค</div>
+      </div>
+    </div>
+
+    <!-- Repair -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-red-500 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-red-50 text-red-600 flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500"></span>
+        </span>
+      </div>
+      <div class="min-w-0">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">รอซ่อม / ต้องซ่อม</div>
+        <div id="stats-repair-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.repair_count }}</div>
+        <div class="text-[10px] text-red-600 font-medium truncate">แก้ไขปัญหาหน้างาน</div>
+      </div>
+    </div>
+
+    <!-- Broken -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-[#8b4513] flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-orange-50/50 text-[#8b4513] flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#8b4513] opacity-75"></span>
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#8b4513]"></span>
+        </span>
+      </div>
+      <div class="min-w-0">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">ชำรุด / เสีย</div>
+        <div id="stats-broken-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.broken_count }}</div>
+        <div class="text-[10px] text-[#8b4513] font-medium truncate">ต้องเสนออะไหล่</div>
+      </div>
+    </div>
+
+    <!-- Inactive -->
+    <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-slate-400 flex items-center gap-3">
+      <div class="p-2 rounded-lg bg-slate-50 text-slate-400 flex-none">
+        <span class="relative flex h-2.5 w-2.5">
+          <span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-slate-400"></span>
+        </span>
+      </div>
+      <div class="min-w-0">
+        <div class="text-xs font-bold text-slate-500 uppercase tracking-wider truncate">ไม่ได้ใช้งาน</div>
+        <div id="stats-inactive-val" class="text-xl font-black text-slate-800 leading-tight mt-0.5">{{ stats.inactive_count }}</div>
+        <div class="text-[10px] text-slate-400 truncate">ปิดตัวชั่วคราว</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search Section -->
+  <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm mb-8 flex flex-col md:flex-row items-center gap-4 relative">
+    <div class="flex items-center gap-2 flex-none">
+      <i data-lucide="search" class="w-5 h-5 text-slate-400"></i>
+      <span class="text-sm font-bold text-slate-700">ค้นหาเครื่องปรับอากาศด่วน:</span>
+    </div>
+    <div class="relative flex-1 w-full">
+      <input type="text" id="dashboard-search-input" onkeyup="if(event.key === 'Enter') handleDashboardSearch()" placeholder="ค้นหาด้วย หมายเลขแอร์, Serial Number, ยี่ห้อ, รุ่น, ห้อง, ชั้น..." class="w-full pl-4 pr-16 py-2 rounded-lg border border-slate-300 focus:outline-none focus:border-brand-500 text-sm">
+      <button onclick="handleDashboardSearch()" class="absolute right-1 top-1 px-4 py-1 bg-brand-800 hover:bg-slate-700 text-white rounded-md text-xs font-bold transition">
+        ค้นหา
+      </button>
+    </div>
+    <!-- Search Results Dropdown List -->
+    <div id="dashboard-search-results" class="absolute left-0 right-0 top-full mt-2 hidden max-h-60 overflow-y-auto border border-slate-200 rounded divide-y divide-slate-100 z-30 bg-white shadow-lg">
+      <!-- Dynamically populated -->
+    </div>
+  </div>
+
+  {% if is_single_location and single_location %}
+  <!-- Buildings Section (Single Location View) -->
+  <div class="mb-4 flex justify-between items-center">
+    <h3 class="text-lg font-bold text-slate-800">รายการอาคารและแผนผังชั้น ({{ single_location.name }})</h3>
+  </div>
+
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for bld in single_location.buildings %}
+      <div class="bg-white rounded-xl border border-slate-200 shadow-sm p-6 hover:shadow-md hover:border-brand-500 transition cursor-pointer flex flex-col justify-between group"
+           onclick="window.location.href='/shared/{{ single_location.id }}/buildings/{{ bld.id }}'">
+        <div>
+          <div class="flex items-start justify-between mb-4">
+            <div class="p-3 bg-brand-50 rounded-lg text-brand-800">
+              <i data-lucide="building-2" class="w-6 h-6"></i>
+            </div>
+            <span class="text-xs bg-slate-100 text-slate-600 font-bold px-2.5 py-1 rounded-full">{{ bld.floors_count }} ชั้นทั้งหมด</span>
+          </div>
+          <h4 class="text-lg font-bold text-slate-800">{{ bld.name }}</h4>
+          <p class="text-xs text-slate-500 mt-1">สถานที่: {{ single_location.name }}</p>
+        </div>
+        
+        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+          <span class="text-xs text-slate-500 font-medium">คลิกเพื่อเลือกชั้นอาคาร</span>
+          <div class="text-brand-500 font-bold text-xs flex items-center gap-1 group-hover:translate-x-0.5 transition">
+            เปิดดูชั้น <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="col-span-full text-center py-12 bg-white rounded-xl border border-dashed border-slate-300 text-slate-400">
+        <i data-lucide="building" class="w-12 h-12 mx-auto mb-3 text-slate-300"></i>
+        <h4 class="font-bold text-slate-600 mb-1">ยังไม่มีอาคารในสถานที่นี้</h4>
+      </div>
+    {% endfor %}
+  </div>
+
+  {% else %}
+  <!-- Locations List Header & Grid (Multiple Locations View) -->
+  <div class="mb-4 flex justify-between items-center">
     <h3 class="text-lg font-bold text-slate-800">รายการสถานที่ทั้งหมด</h3>
-    <div class="relative w-full sm:w-64">
+    <div class="relative w-64">
       <input type="text" id="location-search-input" onkeyup="filterLocationCards()" placeholder="ค้นหาชื่อสถานที่..." class="w-full pl-8 pr-3 py-1.5 rounded-lg border border-slate-300 text-xs focus:outline-none focus:border-brand-500">
       <i data-lucide="search" class="absolute left-2.5 top-2.5 w-3.5 h-3.5 text-slate-400"></i>
     </div>
@@ -61,6 +273,7 @@
       </div>
     {% endfor %}
   </div>
+  {% endif %}
 </div>
 {% endblock %}
 
@@ -82,5 +295,133 @@
       }
     });
   }
+
+  function onDashboardLocationFilterChange() {
+    const dropdown = document.getElementById('dashboard-location-dropdown');
+    if (!dropdown) return;
+    const selectedOption = dropdown.options[dropdown.selectedIndex];
+    const selectedLocId = dropdown.value;
+    
+    const statsVal = document.getElementById('stats-loc-val');
+    const statsLbl = document.getElementById('stats-loc-lbl');
+    const statsSub = document.getElementById('stats-loc-sub');
+
+    const statsAc = document.getElementById('stats-ac-val');
+    const statsNormal = document.getElementById('stats-normal-val');
+    const statsCheck = document.getElementById('stats-check-val');
+    const statsRepair = document.getElementById('stats-repair-val');
+    const statsBroken = document.getElementById('stats-broken-val');
+    const statsInactive = document.getElementById('stats-inactive-val');
+
+    if (selectedLocId) {
+      const buildings = selectedOption.getAttribute('data-buildings');
+      const floors = selectedOption.getAttribute('data-floors');
+      statsVal.textContent = buildings;
+      statsLbl.textContent = 'อาคาร';
+      statsSub.textContent = `${floors} ชั้นทั้งหมด`;
+
+      statsAc.textContent = selectedOption.getAttribute('data-acs');
+      statsNormal.textContent = selectedOption.getAttribute('data-normal');
+      statsCheck.textContent = selectedOption.getAttribute('data-check');
+      statsRepair.textContent = selectedOption.getAttribute('data-repair');
+      statsBroken.textContent = selectedOption.getAttribute('data-broken');
+      statsInactive.textContent = selectedOption.getAttribute('data-inactive');
+    } else {
+      statsVal.textContent = "{{ stats.locations_count }}";
+      statsLbl.textContent = 'โรงพยาบาล';
+      statsSub.textContent = 'ระบบคลาวด์คีย์ข้อมูลร่วมกัน (Turso DB)';
+
+      statsAc.textContent = "{{ stats.acs_count }}";
+      statsNormal.textContent = "{{ stats.normal_count }}";
+      statsCheck.textContent = "{{ stats.check_count }}";
+      statsRepair.textContent = "{{ stats.repair_count }}";
+      statsBroken.textContent = "{{ stats.broken_count }}";
+      statsInactive.textContent = "{{ stats.inactive_count }}";
+    }
+
+    const cards = document.querySelectorAll('.location-card');
+    cards.forEach(card => {
+      const locId = card.getAttribute('data-loc-id');
+      if (!selectedLocId || locId === selectedLocId) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+
+  async function handleDashboardSearch() {
+    const query = document.getElementById('dashboard-search-input').value.trim().toLowerCase();
+    const resultsContainer = document.getElementById('dashboard-search-results');
+    
+    if (!query) {
+      resultsContainer.classList.add('hidden');
+      return;
+    }
+    
+    try {
+      {% if is_single_location and single_location %}
+      const fetchUrl = `/api/v1/acs?locationId={{ single_location.id }}`;
+      {% else %}
+      const fetchUrl = `/api/v1/acs`;
+      {% endif %}
+
+      const res = await fetch(fetchUrl);
+      if (!res.ok) return;
+      const acs = await res.json();
+      
+      const filtered = acs.filter(ac => {
+        return ac.name.toLowerCase().includes(query) ||
+               (ac.serialNumber && ac.serialNumber.toLowerCase().includes(query)) ||
+               (ac.brand && ac.brand.toLowerCase().includes(query)) ||
+               (ac.model && ac.model.toLowerCase().includes(query)) ||
+               (ac.room && ac.room.toLowerCase().includes(query));
+      });
+      
+      resultsContainer.innerHTML = '';
+      if (filtered.length > 0) {
+        filtered.forEach(ac => {
+          const item = document.createElement('div');
+          item.className = "p-3 bg-white hover:bg-slate-50 cursor-pointer transition flex items-center justify-between text-xs";
+          item.onclick = () => {
+            window.location.href = `/shared/workspace/${ac.locationId}/${ac.buildingId}/${ac.floorId}?highlight=${ac.id}`;
+          };
+          
+          let statusLabel = '<span class="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-bold">ใช้งานปกติ</span>';
+          if (ac.status === 'check') statusLabel = '<span class="px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 text-[10px] font-bold">ต้องตรวจสอบ</span>';
+          if (ac.status === 'repair') statusLabel = '<span class="px-2 py-0.5 rounded-full bg-orange-100 text-orange-800 text-[10px] font-bold">ต้องซ่อม</span>';
+          if (ac.status === 'broken') statusLabel = '<span class="px-2 py-0.5 rounded-full bg-rose-100 text-rose-800 text-[10px] font-bold">ชำรุด</span>';
+          if (ac.status === 'inactive') statusLabel = '<span class="px-2 py-0.5 rounded-full bg-slate-200 text-slate-700 text-[10px] font-bold">ไม่ได้ใช้งาน</span>';
+
+          item.innerHTML = `
+            <div>
+              <div class="font-bold text-slate-800">${ac.name} <span class="text-slate-400 font-normal">(${ac.brand || '-'} / ${ac.model || '-'})</span></div>
+              <div class="text-[11px] text-slate-500 mt-0.5">ห้อง: ${ac.room || '-'}</div>
+            </div>
+            <div class="flex items-center gap-2">
+              ${statusLabel}
+              <i data-lucide="chevron-right" class="w-4 h-4 text-slate-400"></i>
+            </div>
+          `;
+          resultsContainer.appendChild(item);
+        });
+        resultsContainer.classList.remove('hidden');
+        lucide.createIcons();
+      } else {
+        resultsContainer.innerHTML = '<div class="p-3 text-xs text-slate-400 text-center">ไม่พบข้อมูลเครื่องปรับอากาศที่ค้นหา</div>';
+        resultsContainer.classList.remove('hidden');
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  document.addEventListener('click', (e) => {
+    const resultsContainer = document.getElementById('dashboard-search-results');
+    const searchInput = document.getElementById('dashboard-search-input');
+    if (resultsContainer && searchInput && !resultsContainer.contains(e.target) && !searchInput.contains(e.target)) {
+      resultsContainer.classList.add('hidden');
+    }
+  });
 </script>
 {% endblock %}

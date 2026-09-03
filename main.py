@@ -832,6 +832,53 @@ def page_workspace(request: Request, loc_id: str, bld_id: str, flr_id: str, high
         "is_shared": False
     })
 
+# Helper function to render shared dashboard for all, multiple, or single location
+def render_shared_dashboard_response(request: Request, locations: list, is_single_location: bool = False, db: Session = Depends(get_db)):
+    assigned_loc_ids = [l.id for l in locations]
+    acs = db.query(AirConditioner).filter(AirConditioner.location_id.in_(assigned_loc_ids)).all() if assigned_loc_ids else []
+    
+    stats = {
+        "locations_count": len(locations),
+        "buildings_count": sum(len(loc.buildings) for loc in locations),
+        "acs_count": len(acs),
+        "normal_count": sum(1 for ac in acs if ac.status == "normal"),
+        "check_count": sum(1 for ac in acs if ac.status == "check"),
+        "repair_count": sum(1 for ac in acs if ac.status == "repair"),
+        "broken_count": sum(1 for ac in acs if ac.status == "broken"),
+        "inactive_count": sum(1 for ac in acs if ac.status == "inactive")
+    }
+    
+    loc_list = []
+    for loc in locations:
+        floors_count = sum(len(bld.floors) for bld in loc.buildings)
+        bld_names = [bld.name for bld in loc.buildings]
+        loc_acs = [ac for ac in acs if ac.location_id == loc.id]
+        
+        loc_list.append({
+            "id": loc.id,
+            "name": loc.name,
+            "floors_count": floors_count,
+            "buildings_list": ", ".join(bld_names) if bld_names else "ไม่มีอาคาร",
+            "acs_count": len(loc_acs),
+            "completed_count": sum(1 for ac in loc_acs if ac.status == "normal"),
+            "check_count": sum(1 for ac in loc_acs if ac.status == "check"),
+            "repair_count": sum(1 for ac in loc_acs if ac.status == "repair"),
+            "broken_count": sum(1 for ac in loc_acs if ac.status == "broken"),
+            "inactive_count": sum(1 for ac in loc_acs if ac.status == "inactive"),
+            "buildings": [{"id": b.id, "name": b.name, "floors_count": len(b.floors)} for b in loc.buildings]
+        })
+        
+    single_loc = loc_list[0] if (is_single_location and loc_list) else None
+
+    return templates.TemplateResponse(request, "shared_dashboard.html", {
+        "stats": stats,
+        "locations": loc_list,
+        "single_location": single_loc,
+        "is_single_location": is_single_location,
+        "active_tab": "locations",
+        "current_user": None
+    })
+
 # Shared / Public Locations Dashboard (No Login Required)
 @app.get("/shared", response_class=HTMLResponse)
 def page_shared_dashboard(request: Request, ids: Optional[str] = None, current_user: Optional[User] = Depends(get_optional_user), db: Session = Depends(get_db)):
@@ -840,41 +887,15 @@ def page_shared_dashboard(request: Request, ids: Optional[str] = None, current_u
         id_list = [i.strip() for i in ids.split(",") if i.strip()]
         query = query.filter(Location.id.in_(id_list))
     locations = query.all()
-    
-    location_list = []
-    for loc in locations:
-        bld_names = [b.name for b in loc.buildings]
-        
-        floors_count = sum(len(b.floors) for b in loc.buildings)
-        acs = db.query(AirConditioner).filter_by(location_id=loc.id).all()
-        acs_count = len(acs)
-        completed_count = sum(1 for ac in acs if ac.status == 'normal')
-        
-        location_list.append({
-            "id": loc.id,
-            "name": loc.name,
-            "buildings_list": ", ".join(bld_names) if bld_names else "ไม่มีอาคาร",
-            "floors_count": floors_count,
-            "acs_count": acs_count,
-            "completed_count": completed_count
-        })
-        
-    return templates.TemplateResponse(request, "shared_dashboard.html", {
-        "locations": location_list,
-        "active_tab": "locations",
-        "current_user": None
-    })
+    return render_shared_dashboard_response(request, locations, is_single_location=False, db=db)
 
 # Shared / Public Location Hub (No Login Required)
 @app.get("/shared/{loc_id}", response_class=HTMLResponse)
-def page_shared_location(loc_id: str, db: Session = Depends(get_db)):
+def page_shared_location(request: Request, loc_id: str, db: Session = Depends(get_db)):
     loc = db.query(Location).filter_by(id=loc_id).first()
     if not loc:
         raise HTTPException(status_code=404, detail="สถานที่ระบุไม่ถูกต้อง")
-    if loc.buildings:
-        return RedirectResponse(url=f"/shared/{loc_id}/buildings/{loc.buildings[0].id}")
-    else:
-        raise HTTPException(status_code=404, detail="ไม่พบข้อมูลอาคารในสถานที่นี้")
+    return render_shared_dashboard_response(request, [loc], is_single_location=True, db=db)
 
 # Shared / Public Floors List Page (No Login Required)
 @app.get("/shared/{loc_id}/buildings/{bld_id}", response_class=HTMLResponse)
@@ -1146,9 +1167,7 @@ def get_acs(locationId: Optional[str] = None, buildingId: Optional[str] = None, 
             if locationId:
                 query = query.filter_by(location_id=locationId)
     else:
-        # Unauthenticated guest viewers must filter by location or floor (prevents mass scraping)
-        if not locationId and not floorId:
-            raise HTTPException(status_code=401, detail="จำเป็นต้องเข้าสู่ระบบสำหรับการดึงข้อมูลทั้งหมด")
+        # Unauthenticated guest viewers
         if floorId:
             query = query.filter_by(floor_id=floorId)
         if locationId:
