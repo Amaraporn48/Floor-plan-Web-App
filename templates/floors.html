@@ -8,98 +8,128 @@
 {% endblock %}
 
 {% block content %}
-<div class="max-w-3xl mx-auto px-4 py-8">
-  <div class="mb-6">
-    <a href="/locations" class="text-brand-500 hover:underline text-sm font-medium flex items-center gap-1">
-      <i data-lucide="arrow-left" class="w-4 h-4"></i> ย้อนกลับไปเลือกสถานที่
+<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  <!-- Header -->
+  <div class="mb-8">
+    <a href="/locations" class="text-brand-600 hover:text-brand-800 text-xs font-bold inline-flex items-center gap-1 mb-3 transition">
+      <i data-lucide="arrow-left" class="w-4 h-4"></i> ย้อนกลับไปหน้าสถานที่ทั้งหมด
     </a>
-    <div class="flex items-center justify-between mt-2 flex-wrap gap-2">
+    
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
       <div>
-        <h2 class="text-2xl font-bold text-slate-800">เลือกชั้นอาคาร ({{ building.name }})</h2>
-        <p class="text-slate-500 text-sm mt-0.5">กรุณาคลิกเลือกชั้นเพื่อเปิดหน้าจอแผนภาพ Floor Plan</p>
+        <div class="flex items-center gap-2 mb-1.5">
+          <span class="px-3 py-1 bg-brand-50 text-brand-800 text-xs font-bold rounded-full border border-brand-100 flex items-center gap-1.5">
+            <i data-lucide="building-2" class="w-3.5 h-3.5"></i> {{ location.name }}
+          </span>
+        </div>
+        <h2 class="text-2xl font-bold text-slate-800">เลือกชั้นอาคาร — {{ building.name }}</h2>
+        <p class="text-slate-500 text-sm mt-1">คลิกเลือกชั้นเพื่อเปิดหน้าจอแผนภาพ Floor Plan และตำแหน่งติดตั้งเครื่องปรับอากาศ</p>
       </div>
+
       <div class="flex items-center gap-2">
-        <button onclick="shareFloorsPage()" class="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 rounded text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="แชร์ลิงก์ดูอย่างเดียวของตึกนี้">
-          <i data-lucide="share-2" class="w-4 h-4 text-brand-600"></i> แชร์ลิงก์ดูอย่างเดียว
+        <button onclick="shareFloorsPage()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm" title="แชร์ลิงก์ดูอย่างเดียวของตึกนี้">
+          <i data-lucide="share-2" class="w-4 h-4 text-brand-600"></i> แชร์ลิงก์ตึกนี้
         </button>
         {% if current_user.role == 'admin' %}
-        <button onclick="promptAddNewFloor()" class="px-3.5 py-2 bg-brand-800 hover:bg-slate-700 text-white rounded text-xs font-bold transition flex items-center gap-1 shadow-sm">
-          <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มชั้น / แปลนอาคาร
+        <button onclick="promptAddNewFloor()" class="px-4 py-2 bg-brand-800 hover:bg-brand-900 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 shadow-sm">
+          <i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มชั้น / แปลนอาคาร
         </button>
         {% endif %}
       </div>
     </div>
   </div>
 
-  <!-- Buildings Tab bar -->
-  <div class="flex items-center justify-between border-b border-slate-200 mb-6 flex-wrap gap-2">
-    <div class="flex gap-2 overflow-x-auto whitespace-nowrap">
+  <!-- Building Pill Tabs & Admin Actions Bar -->
+  <div class="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm mb-8 flex flex-col md:flex-row md:items-center justify-between gap-4">
+    <!-- Building Tabs -->
+    <div class="flex items-center gap-2 overflow-x-auto pb-1 md:pb-0 scrollbar-none flex-1">
       {% for b in location.buildings %}
         <a href="/locations/{{ location.id }}/buildings/{{ b.id }}" 
-           class="px-3 py-2 border-b-2 font-bold text-xs transition flex-none {% if b.id == building.id %}border-brand-500 text-brand-600{% else %}border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300{% endif %}">
-          {{ b.name }}
+           class="px-4 py-2.5 rounded-xl font-bold text-xs transition-all flex items-center gap-2 flex-none {% if b.id == building.id %}bg-brand-800 text-white shadow-md shadow-brand-900/20 scale-[1.02]{% else %}bg-slate-50 text-slate-600 hover:bg-slate-100 border border-slate-200{% endif %}">
+          <i data-lucide="building" class="w-4 h-4"></i>
+          <span>{{ b.name }}</span>
         </a>
       {% endfor %}
     </div>
+
+    <!-- Admin Building Management -->
     {% if current_user.role == 'admin' %}
-    <div class="hidden md:flex items-center gap-2 pb-1 text-xs">
-      <button onclick="promptRenameBuilding()" class="text-slate-500 hover:text-brand-600 font-semibold flex items-center gap-0.5">
-        <i data-lucide="edit-2" class="w-3.5 h-3.5"></i> แก้ไขชื่อตึก
+    <div class="flex items-center gap-2 pt-3 md:pt-0 border-t md:border-t-0 border-slate-100 text-xs flex-none">
+      <button onclick="promptRenameBuilding()" class="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200 rounded-lg font-bold flex items-center gap-1 transition">
+        <i data-lucide="edit-2" class="w-3.5 h-3.5 text-brand-600"></i> แก้ไขชื่อตึก
       </button>
-      <span class="text-slate-300">|</span>
-      <button onclick="confirmDeleteBuilding()" class="text-slate-500 hover:text-rose-600 font-semibold flex items-center gap-0.5">
-        <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> ลบตึกนี้
+      <button onclick="confirmDeleteBuilding()" class="px-3 py-1.5 bg-slate-50 hover:bg-rose-50 text-rose-600 border border-slate-200 rounded-lg font-bold flex items-center gap-1 transition">
+        <i data-lucide="trash-2" class="w-3.5 h-3.5 text-rose-600"></i> ลบตึกนี้
       </button>
-      <span class="text-slate-300">|</span>
-      <button onclick="promptAddNewBuilding()" class="text-brand-600 hover:text-brand-800 font-bold flex items-center gap-0.5">
-        <i data-lucide="plus" class="w-3.5 h-3.5"></i> เพิ่มอาคารใหม่
+      <button onclick="promptAddNewBuilding()" class="px-3 py-1.5 bg-brand-50 hover:bg-brand-100 text-brand-800 border border-brand-200 rounded-lg font-bold flex items-center gap-1 transition">
+        <i data-lucide="plus" class="w-3.5 h-3.5 text-brand-800"></i> เพิ่มอาคารใหม่
       </button>
     </div>
     {% endif %}
   </div>
 
-  <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
-    <div id="floors-list-container" class="divide-y divide-slate-100">
-      {% for fl in floors %}
-        <div class="group flex items-center justify-between p-4 hover:bg-slate-50 transition">
-          <div onclick="navigateToWorkspace('{{ fl.id }}')" class="flex-1 flex items-center gap-3 cursor-pointer">
-            <!-- Icon indicator -->
-            <div class="w-10 h-10 bg-brand-100 rounded-full flex items-center justify-center text-brand-800 font-bold text-sm flex-none">
+  <!-- Building Floors Grid -->
+  <div class="mb-4 flex items-center justify-between">
+    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+      <span>รายการชั้นใน {{ building.name }}</span>
+      <span class="text-xs bg-slate-100 text-slate-600 font-bold px-2.5 py-0.5 rounded-full border border-slate-200">{{ floors | length }} ชั้นทั้งหมด</span>
+    </h3>
+  </div>
+
+  <div id="floors-list-container" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {% for fl in floors %}
+      <div class="group bg-white rounded-2xl border border-slate-200 shadow-sm p-6 hover:shadow-xl hover:border-brand-500 hover:-translate-y-1 transition duration-200 cursor-pointer flex flex-col justify-between"
+           onclick="navigateToWorkspace('{{ fl.id }}')">
+        <div>
+          <div class="flex items-start justify-between mb-4">
+            <div class="w-12 h-12 bg-gradient-to-br from-brand-700 to-brand-900 text-white rounded-xl flex items-center justify-center font-black text-base shadow-sm group-hover:scale-105 transition-transform">
               {{ fl.name | floor_abbrev }}
             </div>
-            <div>
-              <span class="font-bold text-slate-800 block">{{ fl.name }}</span>
-              <div class="flex items-center gap-1.5 mt-0.5 text-xs">
-                <span class="text-slate-400">แอร์ในชั้น:</span>
-                <strong class="text-slate-600">{{ fl.ac_count }} เครื่อง</strong>
-
-              </div>
+            
+            <div class="flex items-center gap-1.5">
+              {% if fl.has_blueprint %}
+              <span class="px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700 text-xs font-bold border border-emerald-200 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> มีแผนผัง
+              </span>
+              {% else %}
+              <span class="px-2.5 py-1 rounded-full bg-slate-100 text-slate-400 text-xs font-medium border border-slate-200 flex items-center gap-1">
+                <span class="w-1.5 h-1.5 rounded-full bg-slate-300"></span> ยังไม่มีผัง
+              </span>
+              {% endif %}
             </div>
           </div>
-          
-          <!-- Actions on hover -->
+
+          <h4 class="text-xl font-bold text-slate-800 group-hover:text-brand-800 transition">{{ fl.name }}</h4>
+          <div class="flex items-center gap-2 mt-2 text-xs text-slate-500">
+            <i data-lucide="pocket" class="w-4 h-4 text-brand-600"></i>
+            <span>แอร์ในชั้นนี้: <strong class="text-slate-800 font-bold">{{ fl.ac_count }} เครื่อง</strong></span>
+          </div>
+        </div>
+        
+        <div class="mt-6 pt-4 border-t border-slate-100 flex items-center justify-between">
+          <span class="text-xs font-bold text-brand-600 group-hover:text-brand-800 transition">เปิดดูแปลนชั้นนี้</span>
           <div class="flex items-center gap-1.5">
             {% if current_user.role == 'admin' %}
-            <button onclick="promptRenameFloor('{{ fl.id }}', '{{ fl.name }}')" class="sm:opacity-0 sm:group-hover:opacity-100 text-slate-400 hover:text-brand-600 transition p-1 bg-slate-100 hover:bg-slate-200 rounded" title="แก้ไขชื่อชั้น">
+            <button onclick="event.stopPropagation(); promptRenameFloor('{{ fl.id }}', '{{ fl.name }}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg" title="แก้ไขชื่อชั้น">
               <i data-lucide="edit-2" class="w-3.5 h-3.5"></i>
             </button>
-            <button onclick="confirmDeleteFloor('{{ fl.id }}', '{{ fl.name }}')" class="sm:opacity-0 sm:group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition p-1 bg-slate-100 hover:bg-slate-200 rounded" title="ลบชั้น">
+            <button onclick="event.stopPropagation(); confirmDeleteFloor('{{ fl.id }}', '{{ fl.name }}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-rose-600 transition p-1.5 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg" title="ลบชั้น">
               <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
             </button>
             {% endif %}
-            <button onclick="navigateToWorkspace('{{ fl.id }}')" class="p-1 bg-slate-100 hover:bg-brand-500 hover:text-white text-slate-500 rounded transition">
-              <i data-lucide="chevron-right" class="w-5 h-5"></i>
-            </button>
+            <div class="p-1.5 rounded-lg bg-slate-50 group-hover:bg-brand-800 group-hover:text-white text-slate-400 transition">
+              <i data-lucide="chevron-right" class="w-4 h-4"></i>
+            </div>
           </div>
         </div>
-      {% else %}
-        <div class="text-center py-12 text-slate-400">
-          <i data-lucide="map" class="w-12 h-12 mx-auto mb-3 text-slate-300"></i>
-          <h4 class="font-bold text-slate-600 mb-1">ยังไม่มีชั้นในอาคารนี้</h4>
-          <p class="text-xs">กรุณากดปุ่มเพิ่มชั้นที่มุมขวาบนเพื่อเริ่มต้น</p>
-        </div>
-      {% endfor %}
-    </div>
+      </div>
+    {% else %}
+      <div class="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-slate-300 text-slate-400">
+        <i data-lucide="map" class="w-12 h-12 mx-auto mb-3 text-slate-300"></i>
+        <h4 class="font-bold text-slate-600 mb-1">ยังไม่มีชั้นในอาคารนี้</h4>
+        <p class="text-xs">กรุณากดปุ่มเพิ่มชั้นที่มุมขวาบนเพื่อเริ่มต้นการติดตั้งแปลนผัง</p>
+      </div>
+    {% endfor %}
   </div>
 </div>
 {% endblock %}
