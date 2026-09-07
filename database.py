@@ -179,6 +179,15 @@ def init_db():
                 with engine.begin() as conn:
                     conn.execute(text("ALTER TABLE users ADD COLUMN plain_password VARCHAR"))
                 print("Column plain_password added.")
+
+        # Check if locations table is missing dashboard_ac_types column and add it
+        if "locations" in inspector.get_table_names():
+            loc_cols = [c["name"] for c in inspector.get_columns("locations")]
+            if "dashboard_ac_types" not in loc_cols:
+                print("Adding dashboard_ac_types column to locations table...")
+                with engine.begin() as conn:
+                    conn.execute(text("ALTER TABLE locations ADD COLUMN dashboard_ac_types TEXT DEFAULT 'AHU,FCU'"))
+                print("Column dashboard_ac_types added.")
                 
         Base.metadata.create_all(bind=engine)
         
@@ -230,4 +239,11 @@ def init_db():
             print("Database tables already exist. Skipping creation.")
         else:
             raise e
+
+# Run schema check & column migration on module import
+try:
+    init_db()
+except Exception as _e:
+    print("Module level init_db notice:", _e)
+
 
