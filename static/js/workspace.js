@@ -21,6 +21,7 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Fetch initial AC data and render
   await fetchAndRenderWorkspace();
+  loadACTypes();
 
   // Handle cached image load race condition
   const img = document.getElementById('floorplan-image');
@@ -35,6 +36,7 @@ window.addEventListener('DOMContentLoaded', async () => {
       closeSideDrawer();
       closeQRModal();
       closeImagePreviewModal();
+      closeACTypeManagerModal();
     }
   });
 });
@@ -647,63 +649,199 @@ function openAddACModal(x = 50, y = 50) {
   
   // Set modal fields default values
   document.getElementById('modal-title').textContent = "เพิ่มเครื่องปรับอากาศใหม่";
-  document.getElementById('form-ac-id').value = '';
-  document.getElementById('form-ac-x').value = x;
-  document.getElementById('form-ac-y').value = y;
-  
-  document.getElementById('form-name').value = '';
-  document.getElementById('form-serial').value = '';
-  document.getElementById('form-type').value = 'Wall Type';
-  document.getElementById('form-system-type').value = 'ระบบน้ำยา';
-  document.getElementById('form-btu').value = '';
-  document.getElementById('form-brand').value = '';
-  document.getElementById('form-model').value = '';
-  document.getElementById('form-install-date').value = '';
-  document.getElementById('form-room').value = '';
-  document.getElementById('form-status').value = 'normal';
-  document.getElementById('form-note').value = '';
-  
-  acFormImages = [];
-  document.getElementById('form-images-preview').innerHTML = '';
-  
-  // Coordinates indicators
-  document.getElementById('form-coords-indicator').classList.remove('hidden');
-  document.getElementById('form-indicator-x').textContent = x.toFixed(1);
-  document.getElementById('form-indicator-y').textContent = y.toFixed(1);
+  let cachedACTypes = [];
 
-  document.getElementById('ac-modal').classList.remove('hidden');
-  
-  toggleCustomTypeField();
-  toggleCustomSystemTypeField();
-  lucide.createIcons();
-}
+  async function loadACTypes(selectedType = null) {
+    const select = document.getElementById('form-type');
+    if (!select) return;
 
-async function editACFromDrawer() {
-  const acId = state.selectedACId;
-  closeSideDrawer();
+    const currentVal = selectedType || select.value;
 
-  try {
-    const res = await fetch(`/api/v1/acs/${acId}`);
-    if (!res.ok) return;
-    const ac = await res.json();
-
-    document.getElementById('modal-title').textContent = `แก้ไขข้อมูลเครื่อง ${ac.name}`;
-    document.getElementById('form-ac-id').value = ac.id;
-    document.getElementById('form-ac-x').value = ac.x;
-    document.getElementById('form-ac-y').value = ac.y;
-
-    document.getElementById('form-name').value = ac.name;
-    document.getElementById('form-serial').value = ac.serialNumber || '';
-    
-    // Type mapping fallback
-    const standardTypes = ["Wall Type", "Cassette Type", "Ceiling Type", "AHU", "FCU", "Floor Type", "Package", "Split Type"];
-    if (standardTypes.includes(ac.type)) {
-      document.getElementById('form-type').value = ac.type;
-      document.getElementById('form-custom-type').value = '';
-    } else {
-      document.getElementById('form-type').value = 'อื่นๆ';
-      document.getElementById('form-custom-type').value = ac.type;
+    try {
+      const res = await fetch('/api/v1/ac-types');
+      if (res.ok) {
+        cachedACTypes = await res.json();
+      }
+    } catch (e) {
+      console.error(e);
     }
+
+    if (!cachedACTypes || cachedACTypes.length === 0) {
+      cachedACTypes = [
+        { id: "actype-1", name: "Wall Type (ติดผนัง)" },
+        { id: "actype-2", name: "Cassette Type (ฝังฝ้า 4 ทิศทาง)" },
+        { id: "actype-3", name: "Ceiling Type (แขวนใต้ฝ้า)" },
+        { id: "actype-4", name: "AHU" },
+        { id: "actype-5", name: "FCU" },
+        { id: "actype-6", name: "Floor Type (ตั้งพื้น)" },
+        { id: "actype-7", name: "Package (ตู้ตั้งพื้นใหญ่)" },
+        { id: "actype-8", name: "Split Type (แยกส่วน)" },
+        { id: "actype-9", name: "อื่นๆ" }
+      ];
+    }
+
+    // Populate select dropdown
+    select.innerHTML = '';
+    cachedACTypes.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.name;
+      opt.textContent = t.name;
+      select.appendChild(opt);
+    });
+
+    if (currentVal) {
+      const exists = cachedACTypes.some(t => t.name === currentVal);
+      if (!exists) {
+        const opt = document.createElement('option');
+        opt.value = currentVal;
+        opt.textContent = currentVal;
+        select.appendChild(opt);
+      }
+      select.value = currentVal;
+    }
+
+    // Populate Manager list in modal
+    const managerList = document.getElementById('ac-type-manager-list');
+    if (managerList) {
+      managerList.innerHTML = '';
+      cachedACTypes.forEach(t => {
+        const item = document.createElement('div');
+        item.className = "flex items-center justify-between p-2.5 rounded-lg bg-white border border-slate-200 text-xs font-bold text-slate-700 transition shadow-sm hover:border-slate-300";
+        item.innerHTML = `
+          <span class="flex items-center gap-2">
+            <i data-lucide="tag" class="w-3.5 h-3.5 text-brand-600"></i> ${t.name}
+          </span>
+          <button type="button" onclick="deleteACTypeFromManager('${t.id}', '${t.name.replace(/'/g, "\\'")}')" class="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-600 rounded-md transition flex items-center gap-1 text-[11px]" title="ลบชนิดนี้">
+            <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> ลบชนิด
+          </button>
+        `;
+        managerList.appendChild(item);
+      });
+      if (window.lucide) lucide.createIcons();
+    }
+  }
+
+  function openACTypeManagerModal() {
+    const modal = document.getElementById('ac-type-manager-modal');
+    if (modal) {
+      modal.classList.remove('hidden');
+      loadACTypes();
+    }
+  }
+
+  function closeACTypeManagerModal() {
+    const modal = document.getElementById('ac-type-manager-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async function addNewACTypeFromManager() {
+    const input = document.getElementById('new-ac-type-name');
+    const name = input ? input.value.trim() : '';
+    if (!name) {
+      alert("กรุณาระบุชื่อชนิดเครื่องปรับอากาศใหม่");
+      return;
+    }
+
+    try {
+      const res = await fetch('/api/v1/ac-types', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      if (res.ok) {
+        input.value = '';
+        await loadACTypes(name);
+        toggleCustomTypeField();
+      } else {
+        alert("เพิ่มชนิดเครื่องปรับอากาศไม่สำเร็จ");
+      }
+    } catch (e) {
+      alert("เกิดข้อผิดพลาดในการเพิ่มชนิดเครื่องปรับอากาศ");
+    }
+  }
+
+  async function deleteACTypeFromManager(typeId, name) {
+    if (!confirm(`⚠️ คุณต้องการลบชนิดเครื่องปรับอากาศ "${name}" หรือไม่?\n\n(เครื่องปรับอากาศที่เลือกชนิดนี้อยู่ก่อนหน้าจะยังคงเก็บข้อมูลไว้ไม่สูญหาย)`)) return;
+
+    try {
+      const res = await fetch(`/api/v1/ac-types/${typeId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        await loadACTypes();
+        toggleCustomTypeField();
+      } else {
+        alert("ลบชนิดเครื่องปรับอากาศไม่สำเร็จ");
+      }
+    } catch (e) {
+      alert("เกิดข้อผิดพลาดในการลบ");
+    }
+  }
+
+  function openACModal(x, y) {
+    loadACTypes();
+    document.getElementById('modal-title').textContent = 'เพิ่มเครื่องปรับอากาศใหม่';
+    document.getElementById('form-ac-id').value = '';
+    document.getElementById('form-ac-x').value = x;
+    document.getElementById('form-ac-y').value = y;
+    
+    document.getElementById('form-name').value = '';
+    document.getElementById('form-serial').value = '';
+    if (cachedACTypes.length > 0) {
+      document.getElementById('form-type').value = cachedACTypes[0].name;
+    }
+    document.getElementById('form-system-type').value = 'ระบบน้ำยา';
+    document.getElementById('form-btu').value = '';
+    document.getElementById('form-brand').value = '';
+    document.getElementById('form-model').value = '';
+    document.getElementById('form-install-date').value = '';
+    document.getElementById('form-room').value = '';
+    document.getElementById('form-status').value = 'normal';
+    document.getElementById('form-note').value = '';
+    
+    acFormImages = [];
+    document.getElementById('form-images-preview').innerHTML = '';
+    
+    // Coordinates indicators
+    document.getElementById('form-coords-indicator').classList.remove('hidden');
+    document.getElementById('form-indicator-x').textContent = x.toFixed(1);
+    document.getElementById('form-indicator-y').textContent = y.toFixed(1);
+
+    document.getElementById('ac-modal').classList.remove('hidden');
+    
+    toggleCustomTypeField();
+    toggleCustomSystemTypeField();
+    lucide.createIcons();
+  }
+
+  async function editACFromDrawer() {
+    const acId = state.selectedACId;
+    closeSideDrawer();
+
+    try {
+      const res = await fetch(`/api/v1/acs/${acId}`);
+      if (!res.ok) return;
+      const ac = await res.json();
+
+      await loadACTypes(ac.type);
+
+      document.getElementById('modal-title').textContent = `แก้ไขข้อมูลเครื่อง ${ac.name}`;
+      document.getElementById('form-ac-id').value = ac.id;
+      document.getElementById('form-ac-x').value = ac.x;
+      document.getElementById('form-ac-y').value = ac.y;
+
+      document.getElementById('form-name').value = ac.name;
+      document.getElementById('form-serial').value = ac.serialNumber || '';
+      
+      const select = document.getElementById('form-type');
+      const hasOption = Array.from(select.options).some(opt => opt.value === ac.type);
+      if (ac.type && hasOption) {
+        select.value = ac.type;
+        document.getElementById('form-custom-type').value = '';
+      } else {
+        select.value = 'อื่นๆ';
+        document.getElementById('form-custom-type').value = ac.type || '';
+      }
 
     // System type fallback
     const standardSystems = ["ระบบน้ำยา", "ระบบน้ำเย็น"];

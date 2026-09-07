@@ -13,7 +13,7 @@ from sqlalchemy.orm import Session
 from database import (
     SessionLocal, init_db,
     Location, Building, Floor, AirConditioner, ACImage, MaintenanceLog,
-    User, UserAssignment
+    User, UserAssignment, ACType
 )
 
 # JWT Auth Configuration
@@ -1105,6 +1105,59 @@ def get_locations(current_user: User = Depends(get_current_user), db: Session = 
                     "buildings": bld_list
                 })
         return res
+
+# AC Types CRUD APIs
+class ACTypeCreate(BaseModel):
+    name: str
+
+@app.get("/api/v1/ac-types")
+def get_ac_types(db: Session = Depends(get_db)):
+    types = db.query(ACType).order_by(ACType.id.asc()).all()
+    if not types:
+        default_names = [
+            "Wall Type (ติดผนัง)",
+            "Cassette Type (ฝังฝ้า 4 ทิศทาง)",
+            "Ceiling Type (แขวนใต้ฝ้า)",
+            "AHU",
+            "FCU",
+            "Floor Type (ตั้งพื้น)",
+            "Package (ตู้ตั้งพื้นใหญ่)",
+            "Split Type (แยกส่วน)",
+            "อื่นๆ"
+        ]
+        for idx, name in enumerate(default_names):
+            t = ACType(id=f"actype-{idx+1}", name=name)
+            db.add(t)
+        db.commit()
+        types = db.query(ACType).order_by(ACType.id.asc()).all()
+        
+    return [{"id": t.id, "name": t.name} for t in types]
+
+@app.post("/api/v1/ac-types")
+def create_ac_type(data: ACTypeCreate, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    name = data.name.strip()
+    if not name:
+        raise HTTPException(status_code=400, detail="กรุณาระบุชื่อชนิดเครื่องปรับอากาศ")
+    
+    existing = db.query(ACType).filter(ACType.name == name).first()
+    if existing:
+        return {"id": existing.id, "name": existing.name}
+    
+    new_type = ACType(id=f"actype-{int(datetime.now().timestamp()*1000)}", name=name)
+    db.add(new_type)
+    db.commit()
+    db.refresh(new_type)
+    return {"id": new_type.id, "name": new_type.name}
+
+@app.delete("/api/v1/ac-types/{type_id}")
+def delete_ac_type(type_id: str, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    t = db.query(ACType).filter(ACType.id == type_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="ไม่พบชนิดเครื่องปรับอากาศนี้")
+    
+    db.delete(t)
+    db.commit()
+    return {"ok": True, "deleted_id": type_id}
 
 @app.post("/api/v1/locations")
 def create_location(data: LocationCreate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):

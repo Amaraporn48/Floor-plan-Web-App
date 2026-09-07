@@ -403,16 +403,23 @@
               <input type="text" id="form-serial" placeholder="ซีเรียลนัมเบอร์แอร์" class="w-full px-3 py-2 border border-slate-300 rounded focus:outline-none focus:border-brand-500 text-sm">
             </div>
             <div>
-              <label for="form-type" class="block text-xs font-bold text-slate-700 mb-1">ชนิดเครื่องปรับอากาศ <span class="text-rose-500">*</span></label>
+              <div class="flex items-center justify-between mb-1">
+                <label for="form-type" class="block text-xs font-bold text-slate-700">ชนิดเครื่องปรับอากาศ <span class="text-rose-500">*</span></label>
+                {% if current_user %}
+                <button type="button" onclick="openACTypeManagerModal()" class="text-xs text-brand-600 hover:text-brand-800 font-bold flex items-center gap-1 transition" title="เขียนเพิ่ม หรือ ลบ ชนิดแอร์">
+                  <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i> เขียนเพิ่ม / ลบ ชนิด
+                </button>
+                {% endif %}
+              </div>
               <select id="form-type" required onchange="toggleCustomTypeField()" class="w-full px-3 py-2 border border-slate-300 rounded bg-white focus:outline-none focus:border-brand-500 text-sm">
-                <option value="Wall Type">Wall Type (ติดผนัง)</option>
-                <option value="Cassette Type">Cassette Type (ฝังฝ้า 4 ทิศทาง)</option>
-                <option value="Ceiling Type">Ceiling Type (แขวนใต้ฝ้า)</option>
+                <option value="Wall Type (ติดผนัง)">Wall Type (ติดผนัง)</option>
+                <option value="Cassette Type (ฝังฝ้า 4 ทิศทาง)">Cassette Type (ฝังฝ้า 4 ทิศทาง)</option>
+                <option value="Ceiling Type (แขวนใต้ฝ้า)">Ceiling Type (แขวนใต้ฝ้า)</option>
                 <option value="AHU">AHU</option>
                 <option value="FCU">FCU</option>
-                <option value="Floor Type">Floor Type (ตั้งพื้น)</option>
-                <option value="Package">Package (ตู้ตั้งพื้นใหญ่)</option>
-                <option value="Split Type">Split Type (แยกส่วน)</option>
+                <option value="Floor Type (ตั้งพื้น)">Floor Type (ตั้งพื้น)</option>
+                <option value="Package (ตู้ตั้งพื้นใหญ่)">Package (ตู้ตั้งพื้นใหญ่)</option>
+                <option value="Split Type (แยกส่วน)">Split Type (แยกส่วน)</option>
                 <option value="อื่นๆ">อื่นๆ</option>
               </select>
               <div id="form-custom-type-container" class="hidden mt-2">
@@ -583,14 +590,46 @@
     </div>
   </div>
 
-  <!-- Image Preview Modal -->
-  <div id="image-preview-modal" class="fixed inset-0 z-[60] flex items-center justify-center hidden" role="dialog" aria-modal="true">
-    <div onclick="closeImagePreviewModal()" class="absolute inset-0 bg-slate-950/80 backdrop-blur-sm"></div>
-    <div class="relative max-w-4xl max-h-[90vh] overflow-hidden z-10 flex flex-col items-center justify-center p-4">
-      <button onclick="closeImagePreviewModal()" class="absolute top-4 right-4 text-white hover:text-slate-300 focus:outline-none p-2 bg-slate-800/60 hover:bg-slate-800/80 rounded-full transition shadow">
-        <i data-lucide="x" class="w-6 h-6"></i>
-      </button>
-      <img id="image-preview-content" src="" alt="High Resolution Preview" class="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl border border-white/10">
+  <!-- Modal Manager for AC Types -->
+  <div id="ac-type-manager-modal" class="fixed inset-0 z-[65] flex items-center justify-center hidden p-4" role="dialog" aria-modal="true">
+    <div onclick="closeACTypeManagerModal()" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"></div>
+    <div class="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden border border-slate-200 z-10 flex flex-col">
+      <!-- Header -->
+      <div class="px-5 py-4 bg-slate-800 text-white flex items-center justify-between flex-none">
+        <h3 class="font-bold text-sm flex items-center gap-2">
+          <i data-lucide="layers" class="w-4 h-4 text-brand-400"></i> จัดการชนิดเครื่องปรับอากาศ
+        </h3>
+        <button type="button" onclick="closeACTypeManagerModal()" class="text-slate-400 hover:text-white transition">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      
+      <div class="p-5 space-y-4">
+        <!-- Add new type box -->
+        <div>
+          <label class="block text-xs font-bold text-slate-700 mb-1">เขียนเพิ่มชนิดเครื่องปรับอากาศใหม่</label>
+          <div class="flex items-center gap-2">
+            <input type="text" id="new-ac-type-name" onkeyup="if(event.key==='Enter') addNewACTypeFromManager()" placeholder="ระบุชื่อชนิดแอร์ (เช่น VRV, Chiller)" class="flex-1 px-3 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:border-brand-500">
+            <button type="button" onclick="addNewACTypeFromManager()" class="px-3.5 py-2 bg-brand-800 hover:bg-brand-500 text-white text-xs font-bold rounded-lg transition flex-none flex items-center gap-1 shadow-sm">
+              <i data-lucide="plus" class="w-4 h-4"></i> เพิ่มชนิด
+            </button>
+          </div>
+        </div>
+
+        <!-- List of AC Types -->
+        <div>
+          <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">รายการชนิดเครื่องปรับอากาศในระบบ</label>
+          <div id="ac-type-manager-list" class="max-h-60 overflow-y-auto space-y-1.5 border border-slate-200 rounded-xl p-2 bg-slate-50">
+            <!-- Dynamically populated -->
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 bg-slate-50 border-t border-slate-200 flex justify-end flex-none">
+        <button type="button" onclick="closeACTypeManagerModal()" class="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg text-xs font-bold transition">
+          ปิดหน้าต่าง
+        </button>
+      </div>
     </div>
   </div>
 </div>

@@ -151,6 +151,11 @@ class MaintenanceLog(Base):
     # Relationships
     ac = relationship("AirConditioner", back_populates="maintenance_history")
 
+class ACType(Base):
+    __tablename__ = "ac_types"
+    id = Column(String, primary_key=True, index=True)
+    name = Column(String, unique=True, nullable=False)
+
 # Create all database tables
 def init_db():
     try:
