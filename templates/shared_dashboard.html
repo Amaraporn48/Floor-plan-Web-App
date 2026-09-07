@@ -39,7 +39,19 @@
                 data-check="{{ stats.check_count }}"
                 data-repair="{{ stats.repair_count }}"
                 data-broken="{{ stats.broken_count }}"
-                data-inactive="{{ stats.inactive_count }}">ทุกสถานที่ (รวมทั้งหมด)</option>
+                data-inactive="{{ stats.inactive_count }}"
+                data-ahu-count="{{ stats.ahu_count }}"
+                data-ahu-normal="{{ stats.ahu_normal }}"
+                data-ahu-check="{{ stats.ahu_check }}"
+                data-ahu-repair="{{ stats.ahu_repair }}"
+                data-ahu-broken="{{ stats.ahu_broken }}"
+                data-ahu-inactive="{{ stats.ahu_inactive }}"
+                data-fcu-count="{{ stats.fcu_count }}"
+                data-fcu-normal="{{ stats.fcu_normal }}"
+                data-fcu-check="{{ stats.fcu_check }}"
+                data-fcu-repair="{{ stats.fcu_repair }}"
+                data-fcu-broken="{{ stats.fcu_broken }}"
+                data-fcu-inactive="{{ stats.fcu_inactive }}">ทุกสถานที่ (รวมทั้งหมด)</option>
         {% for loc in locations %}
           <option value="{{ loc.id }}" 
                   data-buildings="{{ loc.buildings | length }}" 
@@ -49,7 +61,19 @@
                   data-check="{{ loc.check_count }}"
                   data-repair="{{ loc.repair_count }}"
                   data-broken="{{ loc.broken_count }}"
-                  data-inactive="{{ loc.inactive_count }}">{{ loc.name }}</option>
+                  data-inactive="{{ loc.inactive_count }}"
+                  data-ahu-count="{{ loc.ahu_count }}"
+                  data-ahu-normal="{{ loc.ahu_normal }}"
+                  data-ahu-check="{{ loc.ahu_check }}"
+                  data-ahu-repair="{{ loc.ahu_repair }}"
+                  data-ahu-broken="{{ loc.ahu_broken }}"
+                  data-ahu-inactive="{{ loc.ahu_inactive }}"
+                  data-fcu-count="{{ loc.fcu_count }}"
+                  data-fcu-normal="{{ loc.fcu_normal }}"
+                  data-fcu-check="{{ loc.fcu_check }}"
+                  data-fcu-repair="{{ loc.fcu_repair }}"
+                  data-fcu-broken="{{ loc.fcu_broken }}"
+                  data-fcu-inactive="{{ loc.fcu_inactive }}">{{ loc.name }}</option>
         {% endfor %}
       </select>
     </div>
@@ -91,6 +115,123 @@
         <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">เครื่องปรับอากาศสะสมทั้งหมด</div>
         <div id="stats-ac-val" class="text-2xl font-black text-slate-800 mt-0.5">{{ stats.acs_count }}</div>
         <div class="text-xs text-slate-400">เครื่องปรับอากาศที่บันทึกพิกัดไว้ในระบบ</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats Grid (Row 1.5: AHU & FCU Breakdown Cards) -->
+  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+    <!-- AHU Box -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-cyan-600">
+      <div class="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 rounded-lg bg-cyan-50 text-cyan-600 flex-none">
+            <i data-lucide="wind" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">AHU</h4>
+            <p class="text-xs text-slate-400">Air Handling Unit</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <span id="stats-ahu-val" class="text-2xl font-black text-slate-800">{{ stats.ahu_count }}</span>
+          <span class="text-xs font-bold text-slate-500">เครื่อง</span>
+        </div>
+      </div>
+      
+      <!-- 5 Status Colors Grid inside AHU Box -->
+      <div class="grid grid-cols-5 gap-2 text-center">
+        <!-- Normal (Green) -->
+        <div class="p-2 rounded-lg bg-emerald-50/60 border border-emerald-100 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">ปกติ</span>
+          <span id="stats-ahu-normal" class="text-sm font-black text-emerald-700 leading-tight mt-0.5">{{ stats.ahu_normal }}</span>
+        </div>
+
+        <!-- Check (Amber/Orange) -->
+        <div class="p-2 rounded-lg bg-amber-50/60 border border-amber-100 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-amber-500 mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">เช็ค</span>
+          <span id="stats-ahu-check" class="text-sm font-black text-amber-700 leading-tight mt-0.5">{{ stats.ahu_check }}</span>
+        </div>
+
+        <!-- Repair (Red) -->
+        <div class="p-2 rounded-lg bg-red-50/60 border border-red-100 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-red-500 mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">รอซ่อม</span>
+          <span id="stats-ahu-repair" class="text-sm font-black text-red-700 leading-tight mt-0.5">{{ stats.ahu_repair }}</span>
+        </div>
+
+        <!-- Broken (Brown) -->
+        <div class="p-2 rounded-lg bg-orange-50/40 border border-[#8b4513]/20 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-[#8b4513] mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">ชำรุด</span>
+          <span id="stats-ahu-broken" class="text-sm font-black text-[#8b4513] leading-tight mt-0.5">{{ stats.ahu_broken }}</span>
+        </div>
+
+        <!-- Inactive (Gray) -->
+        <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-slate-400 mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">ไม่ใช้งาน</span>
+          <span id="stats-ahu-inactive" class="text-sm font-black text-slate-600 leading-tight mt-0.5">{{ stats.ahu_inactive }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- FCU Box -->
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-indigo-600">
+      <div class="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
+        <div class="flex items-center gap-3">
+          <div class="p-2.5 rounded-lg bg-indigo-50 text-indigo-600 flex-none">
+            <i data-lucide="fan" class="w-5 h-5"></i>
+          </div>
+          <div>
+            <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">FCU</h4>
+            <p class="text-xs text-slate-400">Fan Coil Unit</p>
+          </div>
+        </div>
+        <div class="text-right">
+          <span id="stats-fcu-val" class="text-2xl font-black text-slate-800">{{ stats.fcu_count }}</span>
+          <span class="text-xs font-bold text-slate-500">เครื่อง</span>
+        </div>
+      </div>
+      
+      <!-- 5 Status Colors Grid inside FCU Box -->
+      <div class="grid grid-cols-5 gap-2 text-center">
+        <!-- Normal (Green) -->
+        <div class="p-2 rounded-lg bg-emerald-50/60 border border-emerald-100 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">ปกติ</span>
+          <span id="stats-fcu-normal" class="text-sm font-black text-emerald-700 leading-tight mt-0.5">{{ stats.fcu_normal }}</span>
+        </div>
+
+        <!-- Check (Amber/Orange) -->
+        <div class="p-2 rounded-lg bg-amber-50/60 border border-amber-100 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-amber-500 mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">เช็ค</span>
+          <span id="stats-fcu-check" class="text-sm font-black text-amber-700 leading-tight mt-0.5">{{ stats.fcu_check }}</span>
+        </div>
+
+        <!-- Repair (Red) -->
+        <div class="p-2 rounded-lg bg-red-50/60 border border-red-100 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-red-500 mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">รอซ่อม</span>
+          <span id="stats-fcu-repair" class="text-sm font-black text-red-700 leading-tight mt-0.5">{{ stats.fcu_repair }}</span>
+        </div>
+
+        <!-- Broken (Brown) -->
+        <div class="p-2 rounded-lg bg-orange-50/40 border border-[#8b4513]/20 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-[#8b4513] mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">ชำรุด</span>
+          <span id="stats-fcu-broken" class="text-sm font-black text-[#8b4513] leading-tight mt-0.5">{{ stats.fcu_broken }}</span>
+        </div>
+
+        <!-- Inactive (Gray) -->
+        <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center">
+          <span class="w-2 h-2 rounded-full bg-slate-400 mb-1"></span>
+          <span class="text-[10px] font-bold text-slate-500">ไม่ใช้งาน</span>
+          <span id="stats-fcu-inactive" class="text-sm font-black text-slate-600 leading-tight mt-0.5">{{ stats.fcu_inactive }}</span>
+        </div>
       </div>
     </div>
   </div>
@@ -326,6 +467,21 @@
       statsRepair.textContent = selectedOption.getAttribute('data-repair');
       statsBroken.textContent = selectedOption.getAttribute('data-broken');
       statsInactive.textContent = selectedOption.getAttribute('data-inactive');
+
+      const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+      setTxt('stats-ahu-val', selectedOption.getAttribute('data-ahu-count'));
+      setTxt('stats-ahu-normal', selectedOption.getAttribute('data-ahu-normal'));
+      setTxt('stats-ahu-check', selectedOption.getAttribute('data-ahu-check'));
+      setTxt('stats-ahu-repair', selectedOption.getAttribute('data-ahu-repair'));
+      setTxt('stats-ahu-broken', selectedOption.getAttribute('data-ahu-broken'));
+      setTxt('stats-ahu-inactive', selectedOption.getAttribute('data-ahu-inactive'));
+
+      setTxt('stats-fcu-val', selectedOption.getAttribute('data-fcu-count'));
+      setTxt('stats-fcu-normal', selectedOption.getAttribute('data-fcu-normal'));
+      setTxt('stats-fcu-check', selectedOption.getAttribute('data-fcu-check'));
+      setTxt('stats-fcu-repair', selectedOption.getAttribute('data-fcu-repair'));
+      setTxt('stats-fcu-broken', selectedOption.getAttribute('data-fcu-broken'));
+      setTxt('stats-fcu-inactive', selectedOption.getAttribute('data-fcu-inactive'));
     } else {
       statsVal.textContent = "{{ stats.locations_count }}";
       statsLbl.textContent = 'โรงพยาบาล';
@@ -337,6 +493,21 @@
       statsRepair.textContent = "{{ stats.repair_count }}";
       statsBroken.textContent = "{{ stats.broken_count }}";
       statsInactive.textContent = "{{ stats.inactive_count }}";
+
+      const setTxt = (id, val) => { const el = document.getElementById(id); if(el) el.textContent = val; };
+      setTxt('stats-ahu-val', "{{ stats.ahu_count }}");
+      setTxt('stats-ahu-normal', "{{ stats.ahu_normal }}");
+      setTxt('stats-ahu-check', "{{ stats.ahu_check }}");
+      setTxt('stats-ahu-repair', "{{ stats.ahu_repair }}");
+      setTxt('stats-ahu-broken', "{{ stats.ahu_broken }}");
+      setTxt('stats-ahu-inactive', "{{ stats.ahu_inactive }}");
+
+      setTxt('stats-fcu-val', "{{ stats.fcu_count }}");
+      setTxt('stats-fcu-normal', "{{ stats.fcu_normal }}");
+      setTxt('stats-fcu-check', "{{ stats.fcu_check }}");
+      setTxt('stats-fcu-repair', "{{ stats.fcu_repair }}");
+      setTxt('stats-fcu-broken', "{{ stats.fcu_broken }}");
+      setTxt('stats-fcu-inactive', "{{ stats.fcu_inactive }}");
     }
 
     const cards = document.querySelectorAll('.location-card');

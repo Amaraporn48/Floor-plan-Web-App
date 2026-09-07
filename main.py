@@ -670,6 +670,37 @@ def page_admin_users(request: Request, current_user: User = Depends(get_current_
         "current_user": current_user
     })
 
+def compute_ac_statistics(locations: list, acs: list) -> dict:
+    ahu_acs = [ac for ac in acs if ac.type and "ahu" in ac.type.lower()]
+    fcu_acs = [ac for ac in acs if ac.type and "fcu" in ac.type.lower()]
+    
+    return {
+        "locations_count": len(locations),
+        "buildings_count": sum(len(loc.buildings) for loc in locations),
+        "acs_count": len(acs),
+        "normal_count": sum(1 for ac in acs if ac.status == "normal"),
+        "check_count": sum(1 for ac in acs if ac.status == "check"),
+        "repair_count": sum(1 for ac in acs if ac.status == "repair"),
+        "broken_count": sum(1 for ac in acs if ac.status == "broken"),
+        "inactive_count": sum(1 for ac in acs if ac.status == "inactive"),
+        
+        # AHU Breakdown
+        "ahu_count": len(ahu_acs),
+        "ahu_normal": sum(1 for ac in ahu_acs if ac.status == "normal"),
+        "ahu_check": sum(1 for ac in ahu_acs if ac.status == "check"),
+        "ahu_repair": sum(1 for ac in ahu_acs if ac.status == "repair"),
+        "ahu_broken": sum(1 for ac in ahu_acs if ac.status == "broken"),
+        "ahu_inactive": sum(1 for ac in ahu_acs if ac.status == "inactive"),
+        
+        # FCU Breakdown
+        "fcu_count": len(fcu_acs),
+        "fcu_normal": sum(1 for ac in fcu_acs if ac.status == "normal"),
+        "fcu_check": sum(1 for ac in fcu_acs if ac.status == "check"),
+        "fcu_repair": sum(1 for ac in fcu_acs if ac.status == "repair"),
+        "fcu_broken": sum(1 for ac in fcu_acs if ac.status == "broken"),
+        "fcu_inactive": sum(1 for ac in fcu_acs if ac.status == "inactive"),
+    }
+
 # Dashboard Page
 @app.get("/", response_class=HTMLResponse)
 def page_dashboard(request: Request, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
@@ -681,18 +712,8 @@ def page_dashboard(request: Request, current_user: User = Depends(get_current_us
     else:
         acs = db.query(AirConditioner).filter(AirConditioner.location_id.in_(assigned_loc_ids)).all() if assigned_loc_ids else []
     
-    # Calculate global counters
-    stats = {
-        "locations_count": len(locations),
-        "acs_count": len(acs),
-        "normal_count": sum(1 for ac in acs if ac.status == "normal"),
-        "check_count": sum(1 for ac in acs if ac.status == "check"),
-        "repair_count": sum(1 for ac in acs if ac.status == "repair"),
-        "broken_count": sum(1 for ac in acs if ac.status == "broken"),
-        "inactive_count": sum(1 for ac in acs if ac.status == "inactive")
-    }
+    stats = compute_ac_statistics(locations, acs)
     
-    # Generate list of locations with custom attributes
     loc_list = []
     for loc in locations:
         floors_count = 0
@@ -702,6 +723,9 @@ def page_dashboard(request: Request, current_user: User = Depends(get_current_us
             bld_names.append(bld.name)
         
         loc_acs = [ac for ac in acs if ac.location_id == loc.id]
+        loc_ahu = [ac for ac in loc_acs if ac.type and "ahu" in ac.type.lower()]
+        loc_fcu = [ac for ac in loc_acs if ac.type and "fcu" in ac.type.lower()]
+
         loc_list.append({
             "id": loc.id,
             "name": loc.name,
@@ -713,6 +737,21 @@ def page_dashboard(request: Request, current_user: User = Depends(get_current_us
             "repair_count": sum(1 for ac in loc_acs if ac.status == "repair"),
             "broken_count": sum(1 for ac in loc_acs if ac.status == "broken"),
             "inactive_count": sum(1 for ac in loc_acs if ac.status == "inactive"),
+            
+            "ahu_count": len(loc_ahu),
+            "ahu_normal": sum(1 for ac in loc_ahu if ac.status == "normal"),
+            "ahu_check": sum(1 for ac in loc_ahu if ac.status == "check"),
+            "ahu_repair": sum(1 for ac in loc_ahu if ac.status == "repair"),
+            "ahu_broken": sum(1 for ac in loc_ahu if ac.status == "broken"),
+            "ahu_inactive": sum(1 for ac in loc_ahu if ac.status == "inactive"),
+            
+            "fcu_count": len(loc_fcu),
+            "fcu_normal": sum(1 for ac in loc_fcu if ac.status == "normal"),
+            "fcu_check": sum(1 for ac in loc_fcu if ac.status == "check"),
+            "fcu_repair": sum(1 for ac in loc_fcu if ac.status == "repair"),
+            "fcu_broken": sum(1 for ac in loc_fcu if ac.status == "broken"),
+            "fcu_inactive": sum(1 for ac in loc_fcu if ac.status == "inactive"),
+            
             "buildings": [{"id": b.id, "name": b.name} for b in loc.buildings]
         })
 
@@ -837,23 +876,16 @@ def render_shared_dashboard_response(request: Request, locations: list, is_singl
     assigned_loc_ids = [l.id for l in locations]
     acs = db.query(AirConditioner).filter(AirConditioner.location_id.in_(assigned_loc_ids)).all() if assigned_loc_ids else []
     
-    stats = {
-        "locations_count": len(locations),
-        "buildings_count": sum(len(loc.buildings) for loc in locations),
-        "acs_count": len(acs),
-        "normal_count": sum(1 for ac in acs if ac.status == "normal"),
-        "check_count": sum(1 for ac in acs if ac.status == "check"),
-        "repair_count": sum(1 for ac in acs if ac.status == "repair"),
-        "broken_count": sum(1 for ac in acs if ac.status == "broken"),
-        "inactive_count": sum(1 for ac in acs if ac.status == "inactive")
-    }
+    stats = compute_ac_statistics(locations, acs)
     
     loc_list = []
     for loc in locations:
         floors_count = sum(len(bld.floors) for bld in loc.buildings)
         bld_names = [bld.name for bld in loc.buildings]
         loc_acs = [ac for ac in acs if ac.location_id == loc.id]
-        
+        loc_ahu = [ac for ac in loc_acs if ac.type and "ahu" in ac.type.lower()]
+        loc_fcu = [ac for ac in loc_acs if ac.type and "fcu" in ac.type.lower()]
+
         loc_list.append({
             "id": loc.id,
             "name": loc.name,
@@ -865,6 +897,21 @@ def render_shared_dashboard_response(request: Request, locations: list, is_singl
             "repair_count": sum(1 for ac in loc_acs if ac.status == "repair"),
             "broken_count": sum(1 for ac in loc_acs if ac.status == "broken"),
             "inactive_count": sum(1 for ac in loc_acs if ac.status == "inactive"),
+            
+            "ahu_count": len(loc_ahu),
+            "ahu_normal": sum(1 for ac in loc_ahu if ac.status == "normal"),
+            "ahu_check": sum(1 for ac in loc_ahu if ac.status == "check"),
+            "ahu_repair": sum(1 for ac in loc_ahu if ac.status == "repair"),
+            "ahu_broken": sum(1 for ac in loc_ahu if ac.status == "broken"),
+            "ahu_inactive": sum(1 for ac in loc_ahu if ac.status == "inactive"),
+            
+            "fcu_count": len(loc_fcu),
+            "fcu_normal": sum(1 for ac in loc_fcu if ac.status == "normal"),
+            "fcu_check": sum(1 for ac in loc_fcu if ac.status == "check"),
+            "fcu_repair": sum(1 for ac in loc_fcu if ac.status == "repair"),
+            "fcu_broken": sum(1 for ac in loc_fcu if ac.status == "broken"),
+            "fcu_inactive": sum(1 for ac in loc_fcu if ac.status == "inactive"),
+
             "buildings": [{"id": b.id, "name": b.name, "floors_count": len(b.floors)} for b in loc.buildings]
         })
         
