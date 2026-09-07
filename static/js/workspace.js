@@ -23,10 +23,16 @@ window.addEventListener('DOMContentLoaded', async () => {
   await fetchAndRenderWorkspace();
   loadACTypes();
 
-  // Handle cached image load race condition
+  // Initialize PanZoom reliably
+  ensurePanZoomInitialized();
+
   const img = document.getElementById('floorplan-image');
-  if (img && img.complete) {
-    onFloorPlanImageLoaded();
+  if (img) {
+    if (img.complete) {
+      ensurePanZoomInitialized();
+    } else {
+      img.addEventListener('load', ensurePanZoomInitialized);
+    }
   }
 
   // Configure escape listener to close modals
@@ -70,8 +76,8 @@ async function fetchAndRenderWorkspace() {
   }
 }
 
-// Fit blueprint image to container viewport
-function onFloorPlanImageLoaded() {
+// Fit blueprint image to container viewport reliably
+function ensurePanZoomInitialized() {
   const container = document.getElementById('panzoom-viewport');
   const content = document.getElementById('panzoom-content');
   if (!container || !content) return;
@@ -87,8 +93,32 @@ function onFloorPlanImageLoaded() {
   }
 
   setTimeout(() => {
-    panZoomInstance.zoomToFit();
+    if (panZoomInstance) panZoomInstance.zoomToFit();
   }, 100);
+}
+
+function onFloorPlanImageLoaded() {
+  ensurePanZoomInitialized();
+}
+
+function zoomInMap() {
+  ensurePanZoomInitialized();
+  if (panZoomInstance) panZoomInstance.zoomIn();
+}
+
+function zoomOutMap() {
+  ensurePanZoomInitialized();
+  if (panZoomInstance) panZoomInstance.zoomOut();
+}
+
+function zoomToFitMap() {
+  ensurePanZoomInitialized();
+  if (panZoomInstance) panZoomInstance.zoomToFit();
+}
+
+function resetMapZoom() {
+  ensurePanZoomInitialized();
+  if (panZoomInstance) panZoomInstance.reset();
 }
 
 // Side drawer toggles
@@ -307,17 +337,21 @@ function toggleAddMarkerMode(forceState) {
   const viewport = document.getElementById('panzoom-viewport');
 
   if (state.isAddMarkerMode) {
-    banner.classList.remove('hidden');
-    btn.innerHTML = `<i data-lucide="x" class="w-4 h-4"></i> ยกเลิกการปักหมุด`;
-    btn.className = "px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow transition";
-    viewport.style.cursor = 'crosshair';
+    if (banner) banner.classList.remove('hidden');
+    if (btn) {
+      btn.innerHTML = `<i data-lucide="x" class="w-4 h-4"></i> ยกเลิกการปักหมุด`;
+      btn.className = "px-3 py-2 bg-rose-500 hover:bg-rose-600 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow transition";
+    }
+    if (viewport) viewport.style.cursor = 'crosshair';
   } else {
-    banner.classList.add('hidden');
-    btn.innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มแอร์ลงแปลน`;
-    btn.className = "px-3 py-2 bg-brand-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow transition";
-    viewport.style.cursor = 'grab';
+    if (banner) banner.classList.add('hidden');
+    if (btn) {
+      btn.innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4"></i> เพิ่มแอร์ลงแปลน`;
+      btn.className = "px-3 py-2 bg-brand-800 hover:bg-slate-700 text-white text-xs font-bold rounded-lg flex items-center gap-1.5 shadow transition";
+    }
+    if (viewport) viewport.style.cursor = 'grab';
   }
-  lucide.createIcons();
+  if (window.lucide) lucide.createIcons();
 }
 
 // ==========================================
