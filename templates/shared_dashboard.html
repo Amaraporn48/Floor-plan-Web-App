@@ -109,121 +109,65 @@
     </div>
   </div>
 
-  <!-- Stats Grid (AHU & FCU Breakdown Cards for Shared View) -->
-  <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-8">
-    <!-- AHU Box -->
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-cyan-600">
+  <!-- Stats Grid (Configured AC Type Breakdown Cards for Shared View) -->
+  <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+    {% for card in dashboard_ac_type_cards %}
+    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-brand-600 flex flex-col justify-between">
       <div class="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
         <div class="flex items-center gap-3">
-          <div class="p-2.5 rounded-lg bg-cyan-50 text-cyan-600 flex-none">
-            <i data-lucide="wind" class="w-5 h-5"></i>
+          <div class="p-2.5 rounded-lg bg-brand-50 text-brand-700 flex-none">
+            <i data-lucide="layers" class="w-5 h-5"></i>
           </div>
           <div>
-            <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">AHU</h4>
-            <p class="text-xs text-slate-400">Air Handling Unit</p>
+            <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">{{ card.name }}</h4>
+            <p class="text-xs text-slate-400">เครื่องปรับอากาศ {{ card.name }}</p>
           </div>
         </div>
         <div class="text-right">
-          <span id="stats-ahu-val" class="text-2xl font-black text-slate-800">{{ stats.ahu_count }}</span>
+          <span class="text-2xl font-black text-slate-800">{{ card.count }}</span>
           <span class="text-xs font-bold text-slate-500">เครื่อง</span>
         </div>
       </div>
       
-      <!-- 5 Status Colors Grid inside AHU Box -->
+      <!-- 5 Status Colors Grid inside Box -->
       <div class="grid grid-cols-5 gap-2 text-center">
         <!-- Normal (Green) -->
         <div class="p-2 rounded-lg bg-emerald-50/60 border border-emerald-100 flex flex-col items-center">
           <span class="w-2 h-2 rounded-full bg-emerald-500 mb-1"></span>
           <span class="text-[10px] font-bold text-slate-500">ปกติ</span>
-          <span id="stats-ahu-normal" class="text-sm font-black text-emerald-700 leading-tight mt-0.5">{{ stats.ahu_normal }}</span>
+          <span class="text-sm font-black text-emerald-700 leading-tight mt-0.5">{{ card.normal }}</span>
         </div>
 
         <!-- Check (Amber/Orange) -->
         <div class="p-2 rounded-lg bg-amber-50/60 border border-amber-100 flex flex-col items-center">
           <span class="w-2 h-2 rounded-full bg-amber-500 mb-1"></span>
           <span class="text-[10px] font-bold text-slate-500">เช็ค</span>
-          <span id="stats-ahu-check" class="text-sm font-black text-amber-700 leading-tight mt-0.5">{{ stats.ahu_check }}</span>
+          <span class="text-sm font-black text-amber-700 leading-tight mt-0.5">{{ card.check }}</span>
         </div>
 
         <!-- Repair (Red) -->
         <div class="p-2 rounded-lg bg-red-50/60 border border-red-100 flex flex-col items-center">
           <span class="w-2 h-2 rounded-full bg-red-500 mb-1"></span>
           <span class="text-[10px] font-bold text-slate-500">รอซ่อม</span>
-          <span id="stats-ahu-repair" class="text-sm font-black text-red-700 leading-tight mt-0.5">{{ stats.ahu_repair }}</span>
+          <span class="text-sm font-black text-red-700 leading-tight mt-0.5">{{ card.repair }}</span>
         </div>
 
         <!-- Broken (Brown) -->
         <div class="p-2 rounded-lg bg-orange-50/40 border border-[#8b4513]/20 flex flex-col items-center">
           <span class="w-2 h-2 rounded-full bg-[#8b4513] mb-1"></span>
           <span class="text-[10px] font-bold text-slate-500">ชำรุด</span>
-          <span id="stats-ahu-broken" class="text-sm font-black text-[#8b4513] leading-tight mt-0.5">{{ stats.ahu_broken }}</span>
+          <span class="text-sm font-black text-[#8b4513] leading-tight mt-0.5">{{ card.broken }}</span>
         </div>
 
         <!-- Inactive (Gray) -->
         <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center">
           <span class="w-2 h-2 rounded-full bg-slate-400 mb-1"></span>
           <span class="text-[10px] font-bold text-slate-500">ไม่ใช้งาน</span>
-          <span id="stats-ahu-inactive" class="text-sm font-black text-slate-600 leading-tight mt-0.5">{{ stats.ahu_inactive }}</span>
+          <span class="text-sm font-black text-slate-600 leading-tight mt-0.5">{{ card.inactive }}</span>
         </div>
       </div>
     </div>
-
-    <!-- FCU Box -->
-    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm border-l-4 border-l-indigo-600">
-      <div class="flex items-center justify-between mb-3 pb-3 border-b border-slate-100">
-        <div class="flex items-center gap-3">
-          <div class="p-2.5 rounded-lg bg-indigo-50 text-indigo-600 flex-none">
-            <i data-lucide="fan" class="w-5 h-5"></i>
-          </div>
-          <div>
-            <h4 class="text-sm font-bold text-slate-800 uppercase tracking-wider">FCU</h4>
-            <p class="text-xs text-slate-400">Fan Coil Unit</p>
-          </div>
-        </div>
-        <div class="text-right">
-          <span id="stats-fcu-val" class="text-2xl font-black text-slate-800">{{ stats.fcu_count }}</span>
-          <span class="text-xs font-bold text-slate-500">เครื่อง</span>
-        </div>
-      </div>
-      
-      <!-- 5 Status Colors Grid inside FCU Box -->
-      <div class="grid grid-cols-5 gap-2 text-center">
-        <!-- Normal (Green) -->
-        <div class="p-2 rounded-lg bg-emerald-50/60 border border-emerald-100 flex flex-col items-center">
-          <span class="w-2 h-2 rounded-full bg-emerald-500 mb-1"></span>
-          <span class="text-[10px] font-bold text-slate-500">ปกติ</span>
-          <span id="stats-fcu-normal" class="text-sm font-black text-emerald-700 leading-tight mt-0.5">{{ stats.fcu_normal }}</span>
-        </div>
-
-        <!-- Check (Amber/Orange) -->
-        <div class="p-2 rounded-lg bg-amber-50/60 border border-amber-100 flex flex-col items-center">
-          <span class="w-2 h-2 rounded-full bg-amber-500 mb-1"></span>
-          <span class="text-[10px] font-bold text-slate-500">เช็ค</span>
-          <span id="stats-fcu-check" class="text-sm font-black text-amber-700 leading-tight mt-0.5">{{ stats.fcu_check }}</span>
-        </div>
-
-        <!-- Repair (Red) -->
-        <div class="p-2 rounded-lg bg-red-50/60 border border-red-100 flex flex-col items-center">
-          <span class="w-2 h-2 rounded-full bg-red-500 mb-1"></span>
-          <span class="text-[10px] font-bold text-slate-500">รอซ่อม</span>
-          <span id="stats-fcu-repair" class="text-sm font-black text-red-700 leading-tight mt-0.5">{{ stats.fcu_repair }}</span>
-        </div>
-
-        <!-- Broken (Brown) -->
-        <div class="p-2 rounded-lg bg-orange-50/40 border border-[#8b4513]/20 flex flex-col items-center">
-          <span class="w-2 h-2 rounded-full bg-[#8b4513] mb-1"></span>
-          <span class="text-[10px] font-bold text-slate-500">ชำรุด</span>
-          <span id="stats-fcu-broken" class="text-sm font-black text-[#8b4513] leading-tight mt-0.5">{{ stats.fcu_broken }}</span>
-        </div>
-
-        <!-- Inactive (Gray) -->
-        <div class="p-2 rounded-lg bg-slate-50 border border-slate-200 flex flex-col items-center">
-          <span class="w-2 h-2 rounded-full bg-slate-400 mb-1"></span>
-          <span class="text-[10px] font-bold text-slate-500">ไม่ใช้งาน</span>
-          <span id="stats-fcu-inactive" class="text-sm font-black text-slate-600 leading-tight mt-0.5">{{ stats.fcu_inactive }}</span>
-        </div>
-      </div>
-    </div>
+    {% endfor %}
   </div>
 
   <!-- Search Section -->

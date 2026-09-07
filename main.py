@@ -897,6 +897,7 @@ def render_shared_dashboard_response(request: Request, locations: list, is_singl
             "repair_count": sum(1 for ac in loc_acs if ac.status == "repair"),
             "broken_count": sum(1 for ac in loc_acs if ac.status == "broken"),
             "inactive_count": sum(1 for ac in loc_acs if ac.status == "inactive"),
+            "dashboard_ac_types": getattr(loc, "dashboard_ac_types", None) or "AHU,FCU",
             
             "ahu_count": len(loc_ahu),
             "ahu_normal": sum(1 for ac in loc_ahu if ac.status == "normal"),
@@ -917,11 +918,31 @@ def render_shared_dashboard_response(request: Request, locations: list, is_singl
         
     single_loc = loc_list[0] if (is_single_location and loc_list) else None
 
+    # Compute configured AC Type cards for shared dashboard
+    selected_type_names = ["AHU", "FCU"]
+    if is_single_location and locations:
+        raw_types = getattr(locations[0], "dashboard_ac_types", None) or "AHU,FCU"
+        selected_type_names = [t.strip() for t in raw_types.split(",") if t.strip()]
+
+    dashboard_ac_type_cards = []
+    for t_name in selected_type_names:
+        type_acs = [ac for ac in acs if ac.type and (t_name.lower() in ac.type.lower() or ac.type.lower() == t_name.lower())]
+        dashboard_ac_type_cards.append({
+            "name": t_name,
+            "count": len(type_acs),
+            "normal": sum(1 for ac in type_acs if ac.status == "normal"),
+            "check": sum(1 for ac in type_acs if ac.status == "check"),
+            "repair": sum(1 for ac in type_acs if ac.status == "repair"),
+            "broken": sum(1 for ac in type_acs if ac.status == "broken"),
+            "inactive": sum(1 for ac in type_acs if ac.status == "inactive")
+        })
+
     return templates.TemplateResponse(request, "shared_dashboard.html", {
         "stats": stats,
         "locations": loc_list,
         "single_location": single_loc,
         "is_single_location": is_single_location,
+        "dashboard_ac_type_cards": dashboard_ac_type_cards,
         "active_tab": "locations",
         "current_user": None
     })
@@ -1165,6 +1186,18 @@ def create_location(data: LocationCreate, current_user: User = Depends(get_curre
     db.add(loc)
     db.commit()
     return {"id": loc.id, "name": loc.name}
+
+class LocationDashboardTypesUpdate(BaseModel):
+    ac_types: List[str]
+
+@app.put("/api/v1/locations/{loc_id}/dashboard-ac-types")
+def update_location_dashboard_ac_types(loc_id: str, data: LocationDashboardTypesUpdate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):
+    loc = db.query(Location).filter_by(id=loc_id).first()
+    if not loc:
+        raise HTTPException(status_code=404, detail="Location not found")
+    loc.dashboard_ac_types = ",".join(data.ac_types)
+    db.commit()
+    return {"id": loc.id, "dashboard_ac_types": loc.dashboard_ac_types}
 
 @app.put("/api/v1/locations/{loc_id}")
 def update_location(loc_id: str, data: LocationUpdate, current_user: User = Depends(get_current_admin), db: Session = Depends(get_db)):

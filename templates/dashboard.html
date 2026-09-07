@@ -48,6 +48,7 @@
                   data-repair="{{ loc.repair_count }}"
                   data-broken="{{ loc.broken_count }}"
                   data-inactive="{{ loc.inactive_count }}"
+                  data-types="{{ loc.dashboard_ac_types }}"
                   data-ahu-count="{{ loc.ahu_count }}"
                   data-ahu-normal="{{ loc.ahu_normal }}"
                   data-ahu-check="{{ loc.ahu_check }}"
@@ -64,6 +65,11 @@
       </select>
     </div>
     <div class="flex items-center gap-2">
+      {% if current_user.role == 'admin' %}
+      <button onclick="openDashboardACTypeConfigModal()" class="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold rounded-lg flex items-center justify-center gap-1.5 transition shadow-sm" title="ตั้งค่าชนิดแอร์ที่จะแสดงบนหน้าแชร์สาธารณะ">
+        <i data-lucide="settings" class="w-4 h-4 text-brand-600"></i> เลือกชนิดแอร์บนหน้าแชร์
+      </button>
+      {% endif %}
       <button id="btn-share-portal" onclick="toggleShareSelectionMode()" class="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-sm font-bold rounded-lg flex items-center justify-center gap-1.5 transition shadow-sm" title="เลือกสถานที่สหรับแชร์หน้ารวมแบบเจาะจง">
         <i data-lucide="share-2" class="w-4 h-4 text-brand-600"></i> เลือกแชร์หลายแห่ง
       </button>
@@ -277,6 +283,44 @@
     <button onclick="clearSelectedLocationsShare()" class="text-slate-400 hover:text-white text-xs font-semibold px-2 py-1 transition">
       ยกเลิก
     </button>
+  <!-- Modal: Select AC Types to display on Shared Dashboard -->
+  <div id="dashboard-ac-type-config-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
+    <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
+      <div class="px-6 py-4 bg-slate-800 text-white flex items-center justify-between">
+        <div class="flex items-center gap-2">
+          <i data-lucide="settings" class="w-5 h-5 text-brand-400"></i>
+          <h3 class="font-bold text-base">ตั้งค่าชนิดแอร์สำหรับแสดงบนหน้าแชร์</h3>
+        </div>
+        <button onclick="closeDashboardACTypeConfigModal()" class="text-slate-400 hover:text-white transition p-1">
+          <i data-lucide="x" class="w-5 h-5"></i>
+        </button>
+      </div>
+      <div class="p-6 space-y-4">
+        <div>
+          <label for="config-modal-location-select" class="block text-xs font-bold text-slate-700 uppercase mb-1.5">เลือกสถานที่ / โรงพยาบาล:</label>
+          <select id="config-modal-location-select" onchange="onConfigLocationChange()" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none">
+            {% for loc in locations %}
+              <option value="{{ loc.id }}" data-types="{{ loc.dashboard_ac_types }}">{{ loc.name }}</option>
+            {% endfor %}
+          </select>
+        </div>
+        <div>
+          <label class="block text-xs font-bold text-slate-700 uppercase mb-2">เลือกชนิดแอร์ที่จะให้มี Box แสดงผลบน Dashboard หน้าแชร์:</label>
+          <div id="config-modal-types-list" class="grid grid-cols-1 sm:grid-cols-2 gap-2.5 max-h-60 overflow-y-auto p-3 bg-slate-50 rounded-xl border border-slate-200">
+            <!-- Dynamically rendered checkboxes -->
+          </div>
+          <p class="text-[11px] text-slate-400 mt-2">* หากไม่เลือก ชนิดแอร์ตั้งต้นจะแสดงเฉพาะ AHU และ FCU</p>
+        </div>
+      </div>
+      <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex justify-end gap-3">
+        <button onclick="closeDashboardACTypeConfigModal()" class="px-4 py-2 bg-white border border-slate-300 hover:bg-slate-100 text-slate-700 text-xs font-bold rounded-lg transition">
+          ยกเลิก
+        </button>
+        <button onclick="saveDashboardACTypeConfig()" class="px-5 py-2 bg-brand-800 hover:bg-brand-700 text-white text-xs font-bold rounded-lg transition shadow-md flex items-center gap-1.5">
+          <i data-lucide="check" class="w-4 h-4"></i> บันทึกการตั้งค่า
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 {% endblock %}
@@ -598,6 +642,90 @@
       }
     } catch (e) {
       alert("เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว");
+    }
+  }
+
+  // Dashboard AC Type Modal JavaScript Logic
+  const DEFAULT_ALL_AC_TYPES = ["AHU", "FCU", "Wall Type (ติดผนัง)", "Cassette (ฝังฝ้า 4 ทิศทาง)", "Ceiling / Floor (แขวน/ตั้งพื้น)", "Duct / Concealed (เปลือย/ต่อท่อลม)", "VRV / VRF System", "Chiller (เครื่องทำน้ำเย็น)", "Package Unit"];
+
+  async function openDashboardACTypeConfigModal() {
+    const modal = document.getElementById('dashboard-ac-type-config-modal');
+    if (!modal) return;
+    modal.classList.remove('hidden');
+    await onConfigLocationChange();
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function closeDashboardACTypeConfigModal() {
+    const modal = document.getElementById('dashboard-ac-type-config-modal');
+    if (modal) modal.classList.add('hidden');
+  }
+
+  async function onConfigLocationChange() {
+    const locSelect = document.getElementById('config-modal-location-select');
+    if (!locSelect) return;
+    const selectedOpt = locSelect.options[locSelect.selectedIndex];
+    const rawTypes = selectedOpt ? (selectedOpt.getAttribute('data-types') || 'AHU,FCU') : 'AHU,FCU';
+    const activeTypes = rawTypes.split(',').map(t => t.trim()).filter(Boolean);
+
+    let allTypes = DEFAULT_ALL_AC_TYPES;
+    try {
+      const res = await fetch('/api/v1/ac-types');
+      if (res.ok) {
+        const fetchedTypes = await res.json();
+        if (fetchedTypes && fetchedTypes.length > 0) {
+          allTypes = fetchedTypes.map(t => t.name || t);
+        }
+      }
+    } catch(e) {
+      console.warn("Using default AC types fallback");
+    }
+
+    // Merge any active type that might not be in allTypes
+    activeTypes.forEach(t => {
+      if (!allTypes.includes(t)) allTypes.push(t);
+    });
+
+    const container = document.getElementById('config-modal-types-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    allTypes.forEach(acType => {
+      const isChecked = activeTypes.includes(acType);
+      const label = document.createElement('label');
+      label.className = "flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 hover:border-brand-400 cursor-pointer text-xs font-semibold text-slate-700 transition";
+      label.innerHTML = `
+        <input type="checkbox" value="${acType}" ${isChecked ? 'checked' : ''} class="config-ac-type-cb w-4 h-4 text-brand-600 rounded border-slate-300 focus:ring-brand-500">
+        <span>${acType}</span>
+      `;
+      container.appendChild(label);
+    });
+  }
+
+  async function saveDashboardACTypeConfig() {
+    const locSelect = document.getElementById('config-modal-location-select');
+    if (!locSelect) return;
+    const locId = locSelect.value;
+    
+    const checkboxes = document.querySelectorAll('.config-ac-type-cb:checked');
+    const selectedTypes = Array.from(checkboxes).map(cb => cb.value);
+
+    try {
+      const res = await fetch(`/api/v1/locations/${locId}/dashboard-ac-types`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ac_types: selectedTypes })
+      });
+      if (res.ok) {
+        alert('บันทึกชนิดแอร์สำหรับหน้าแชร์เรียบร้อยแล้ว!');
+        closeDashboardACTypeConfigModal();
+        window.location.reload();
+      } else {
+        const err = await res.json();
+        alert(err.detail || 'เกิดข้อผิดพลาดในการบันทึก');
+      }
+    } catch(e) {
+      alert('เชื่อมต่อเซิร์ฟเวอร์ล้มเหลว');
     }
   }
 </script>

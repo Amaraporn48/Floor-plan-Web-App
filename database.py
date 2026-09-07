@@ -68,6 +68,7 @@ class Location(Base):
     __tablename__ = "locations"
     id = Column(String, primary_key=True, index=True)
     name = Column(String, nullable=False)
+    dashboard_ac_types = Column(Text, nullable=True, default="AHU,FCU")
     
     # Relationships (Cascades deletes)
     buildings = relationship("Building", back_populates="location", cascade="all, delete-orphan")
