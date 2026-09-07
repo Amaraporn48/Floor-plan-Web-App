@@ -283,6 +283,8 @@
     <button onclick="clearSelectedLocationsShare()" class="text-slate-400 hover:text-white text-xs font-semibold px-2 py-1 transition">
       ยกเลิก
     </button>
+  </div>
+
   <!-- Modal: Select AC Types to display on Shared Dashboard -->
   <div id="dashboard-ac-type-config-modal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center hidden p-4">
     <div class="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden border border-slate-100 animate-in fade-in zoom-in-95 duration-200">
@@ -300,7 +302,7 @@
           <label for="config-modal-location-select" class="block text-xs font-bold text-slate-700 uppercase mb-1.5">เลือกสถานที่ / โรงพยาบาล:</label>
           <select id="config-modal-location-select" onchange="onConfigLocationChange()" class="w-full border border-slate-300 rounded-lg p-2.5 bg-white text-slate-800 text-sm font-semibold focus:ring-2 focus:ring-brand-500 focus:outline-none">
             {% for loc in locations %}
-              <option value="{{ loc.id }}" data-types="{{ loc.dashboard_ac_types }}">{{ loc.name }}</option>
+              <option value="{{ loc.id }}" data-types="{{ loc.dashboard_ac_types or 'AHU,FCU' }}">{{ loc.name }}</option>
             {% endfor %}
           </select>
         </div>
@@ -663,18 +665,25 @@
 
   async function onConfigLocationChange() {
     const locSelect = document.getElementById('config-modal-location-select');
-    if (!locSelect) return;
+    if (!locSelect || !locSelect.options || locSelect.selectedIndex < 0) return;
     const selectedOpt = locSelect.options[locSelect.selectedIndex];
-    const rawTypes = selectedOpt ? (selectedOpt.getAttribute('data-types') || 'AHU,FCU') : 'AHU,FCU';
-    const activeTypes = rawTypes.split(',').map(t => t.trim()).filter(Boolean);
+    if (!selectedOpt) return;
+    
+    let rawTypes = selectedOpt.getAttribute('data-types');
+    if (!rawTypes || rawTypes === 'None' || rawTypes === 'null') {
+      rawTypes = 'AHU,FCU';
+    }
 
-    let allTypes = DEFAULT_ALL_AC_TYPES;
+    const activeTypes = rawTypes.split(',').map(t => t.trim()).filter(t => t && t !== 'None' && t !== 'null');
+
+    let allTypes = [...DEFAULT_ALL_AC_TYPES];
     try {
       const res = await fetch('/api/v1/ac-types');
       if (res.ok) {
         const fetchedTypes = await res.json();
         if (fetchedTypes && fetchedTypes.length > 0) {
-          allTypes = fetchedTypes.map(t => t.name || t);
+          const names = fetchedTypes.map(t => t.name || t).filter(Boolean);
+          if (names.length > 0) allTypes = names;
         }
       }
     } catch(e) {
@@ -683,7 +692,7 @@
 
     // Merge any active type that might not be in allTypes
     activeTypes.forEach(t => {
-      if (!allTypes.includes(t)) allTypes.push(t);
+      if (t && t !== 'None' && !allTypes.includes(t)) allTypes.push(t);
     });
 
     const container = document.getElementById('config-modal-types-list');
@@ -691,6 +700,7 @@
     container.innerHTML = '';
 
     allTypes.forEach(acType => {
+      if (!acType || acType === 'None' || acType === 'null') return;
       const isChecked = activeTypes.includes(acType);
       const label = document.createElement('label');
       label.className = "flex items-center gap-2.5 p-2 bg-white rounded-lg border border-slate-200 hover:border-brand-400 cursor-pointer text-xs font-semibold text-slate-700 transition";
